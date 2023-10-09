@@ -16,7 +16,7 @@ import numpy as np
 init()
 
 #Using the protein Ras (PDB 6Q21)
-pose = pyrosetta.pose_from_pdb("inputs/6Q21_A.pdb")
+pose = pyrosetta.pose_from_pdb("6Q21_A.pdb")
 residue_count = pose.total_residue() # N residues
 
 #Function to check for hydrogen atoms in a Pose
@@ -68,14 +68,13 @@ sfxn.setup_for_packing(pose, task_pack.designing_residues(), task_pack.designing
 # packer_task = pyrosetta.rosetta.core.pack.task.PackerTask(pose.total_residue())
 # packer_graph = pyrosetta.rosetta.core.pack.creat_packer_graph(pose, packer_task)
 packer_neighbor_graph = pyrosetta.rosetta.core.pack.create_packer_graph(pose, sfxn, task_pack) #The neighbor graph represents the spatial relationships between residues and is essential for efficient energy calculations.
-packer_task = pyrosetta.rosetta.core.pack.task.PackerTask(pose.total_residue())
-packer_task.restrict_to_repacking()
+
 rotsets.set_task(task_pack) #associates the rotamer sets with the task pack, indicating which residues and rotamers will be considered during the analysis.
 rotsets.build_rotamers(pose, sfxn, packer_neighbor_graph) #builds rotamers for the protein's residues. Rotamers are alternative conformations of side chains that are sampled during protein modeling.
 rotsets.prepare_sets_for_packing(pose, sfxn) #prepares the rotamer sets for packing calculations by potentially reducing the set of rotamers based on their energies.
-ig = InteractionGraphFactory.create_interaction_graph(packer_task, rotsets, pose, sfxn, packer_neighbor_graph) # An interaction graph (ig) is created to represent pairwise interactions between residues and rotamers based on the task pack, rotamer sets, pose, and scoring function
+ig = InteractionGraphFactory.create_interaction_graph(task_pack, rotsets, pose, sfxn, packer_neighbor_graph)
 print("built", rotsets.nrotamers(), "rotamers at", rotsets.nmoltenres(), "positions.")
-rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig) #This computes energies associated with the rotamers in the context of the protein structure. 
+rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig,1) #This computes energies associated with the rotamers in the context of the protein structure. 
 
 #Loop that calculates the pairwise interaction energies between different rotamers (s_i and s_j) at positions 1 and 2 in the protein. The energies are stored in the E 
 n_rots_I = rotsets.nrotamers_for_moltenres(1) # calculating the number of rotamers for residue 1
@@ -101,10 +100,8 @@ with open(output_file, "w") as f:
                         emap.set(rot_i, rot_j, interaction_energy)
         print("Interaction energy between rotamers of residue 1 and 2:", emap[rot_i][rot_j])
         print(emap)
-        print(emap[fa_atr]) 
-        print(emap[fa_rep]) 
-        print(emap[fa_sol])
-        #f.write(f"Score Interactions between residue {residue_number} : {residue1.name3()} and residue {residue_number+1} : {residue2.name3()} --->> Vdw attractive term: {emap[fa_atr]:.2f} Vdw repulsive term: {emap[fa_rep]:.2f} Solvation term: {emap[fa_sol]:.2f} \n\n\n")
+
+        #f.write(f"Score Interactions between residue {residue_number} : {residue1.name3()} and residue {residue_number+1} : {residue2.name3()} --->> Vdw attractive term: {emap['fa_atr']:.2f} Vdw repulsive term: {emap[fa_rep]:.2f} Solvation term: {emap[fa_sol]:.2f} \n\n\n")
 
 
 

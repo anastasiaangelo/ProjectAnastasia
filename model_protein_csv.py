@@ -1,5 +1,4 @@
 import pyrosetta; pyrosetta.init()
-# Ciao
 from pyrosetta.teaching import *
 from pyrosetta import *
 init()

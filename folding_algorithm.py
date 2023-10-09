@@ -5,6 +5,8 @@ init()
 import math
 import random
 
+# modifica
+
 # Folding a 10 residue protein - using a MonteCarlo algorithm to optimise the protein conformation
 
 # Create a simply poly-alanine pose with 10 residues

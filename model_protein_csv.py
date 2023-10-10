@@ -70,13 +70,13 @@ rotsets.build_rotamers(pose, sfxn, packer_neighbor_graph) #builds rotamers for t
 rotsets.prepare_sets_for_packing(pose, sfxn) #prepares the rotamer sets for packing calculations by potentially reducing the set of rotamers based on their energies.
 ig = InteractionGraphFactory.create_interaction_graph(task_pack, rotsets, pose, sfxn, packer_neighbor_graph)
 print("built", rotsets.nrotamers(), "rotamers at", rotsets.nmoltenres(), "positions.")
-rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig,1) #This computes energies associated with the rotamers in the context of the protein structure. 
+rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig, 1) #This computes energies associated with the rotamers in the context of the protein structure. 
+
 
 #Loop that calculates the pairwise interaction energies between different rotamers (s_i and s_j) at positions 1 and 2 in the protein. The energies are stored in the E 
 
 #Analyse energy between residues
 #to isolate the contribution from particular pairs of residues
-# emap = EMapVector()
 
 max_rotamers = 0
 for residue_number in range(1, residue_count):
@@ -96,6 +96,7 @@ with open(output_file, "w") as f:
             continue
 
         residue1 = pose.residue(residue_number)
+        print(f"first loop: number {residue_number} residue is {residue1.name3()} and has {n_rots_I} rotamers")
 
         for residue_number2 in range(1, residue_count):
             n_rots_J = rotsets.nrotamers_for_moltenres(residue_number2)
@@ -103,18 +104,15 @@ with open(output_file, "w") as f:
                 continue
 
             residue2 = pose.residue(residue_number2)
-            #sfxn.eval_ci_2b(residue1, residue2, pose, emap)
+            print(f"second loop: number {residue_number2} residue is {residue2.name3()} and has {n_rots_J} rotamers")
         
             for rot_i in range(1, n_rots_I + 1):
                  for rot_j in range(1, n_rots_J + 1):
+                        # print(f"now considering rotamer {rot_i} and rotamer {rot_j}")
                         E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(residue_number, residue_number2, rot_i, rot_j)
-                        # emap.set(rot_i, rot_j, interaction_energy)
-        print("Interaction energy between rotamers of residue 1 and 2:", E[rot_i, rot_j])
-        # print(emap)
-
-        #f.write(f"Score Interactions between residue {residue_number} : {residue1.name3()} and residue {residue_number+1} : {residue2.name3()} --->> Vdw attractive term: {emap['fa_atr']:.2f} Vdw repulsive term: {emap[fa_rep]:.2f} Solvation term: {emap[fa_sol]:.2f} \n\n\n")
-
-
-
+                        f.write(f"Pairwise interaction rotamer {rot_i} and rotamer {rot_j} --> {E[rot_i-1, rot_j-1]}")
+                        
+        # print("Interaction energy between rotamers of residue 1 and 2:", E[rot_i, rot_j])
+        # f.write(f"Score Interactions between residue {residue_number} : {residue1.name3()} and residue {residue_number2} : {residue2.name3()} --> {E[rot_i, rot_j]}")
 
 

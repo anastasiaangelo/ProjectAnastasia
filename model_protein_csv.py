@@ -1,19 +1,17 @@
 import pyrosetta; pyrosetta.init()
 from pyrosetta.teaching import *
 from pyrosetta import *
-init()
-import csv
-from pyrosetta.rosetta.core.scoring import EMapVector
+
 from pyrosetta.rosetta.core.pack.rotamer_set import RotamerSets
 from pyrosetta.rosetta.core.pack.task import TaskFactory
 from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
 
+import csv
 import sys
 import numpy as np
 
-init()
 
 #Using the protein Ras (PDB 6Q21)
 pose = pyrosetta.pose_from_pdb("6Q21_A.pdb")
@@ -21,11 +19,10 @@ residue_count = pose.total_residue() # N residues
 
 #Function to check for hydrogen atoms in a Pose
 def has_hydrogen_atoms(pose):
-    for residue in pose.residues:
-        for atom in residue.atoms():
-            atom_protocol = pyrosetta.rosetta.core.chemical.Atom()
-            if atom_protocol.is_hydrogen():
-                  return True
+    for i in range(1, pose.total_residue() + 1):
+        for j in range(1, pose.residue(i).natoms() + 1):
+            if pose.residue(i).atom_name(j)[0] == 'H':
+                return True
     return False
 
 #Check if the pose has hydrogen atoms
@@ -83,23 +80,24 @@ n_rots_J = rotsets.nrotamers_for_moltenres(2)
 
 #Analyse energy between residues
 #to isolate the contribution from particular pairs of residues
-emap = EMapVector()
+# emap = EMapVector()
+E = np.zeros((n_rots_I, n_rots_J))
 output_file = "score_summary.csv"
 
 with open(output_file, "w") as f:
-    for residue_number in range(1, residue_count + 1):
+    for residue_number in range(1, residue_count):
         residue1 = pose.residue(residue_number)
         if residue_number == residue_count:
             break
-        for residue_number2 in range(1, residue_count + 1):
+        for residue_number2 in range(1, residue_count):
             residue2 = pose.residue(residue_number2)
         #sfxn.eval_ci_2b(residue1, residue2, pose, emap)
             for rot_i in range(1, n_rots_I + 1):
                  for rot_j in range(1, n_rots_J + 1):
-                        interaction_energy = ig.get_two_body_energy_for_edge(residue_number, residue_number2, rot_i, rot_j)
-                        emap.set(rot_i, rot_j, interaction_energy)
-        print("Interaction energy between rotamers of residue 1 and 2:", emap[rot_i][rot_j])
-        print(emap)
+                        E[rot_i - 1, rot_j - 1] = ig.get_two_body_energy_for_edge(residue_number, residue_number2, rot_i, rot_j)
+                        # emap.set(rot_i, rot_j, interaction_energy)
+        print("Interaction energy between rotamers of residue 1 and 2:", E[rot_i, rot_j])
+        # print(emap)
 
         #f.write(f"Score Interactions between residue {residue_number} : {residue1.name3()} and residue {residue_number+1} : {residue2.name3()} --->> Vdw attractive term: {emap['fa_atr']:.2f} Vdw repulsive term: {emap[fa_rep]:.2f} Solvation term: {emap[fa_sol]:.2f} \n\n\n")
 

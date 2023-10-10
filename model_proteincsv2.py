@@ -66,7 +66,7 @@ sfxn.setup_for_packing(pose, task_pack.designing_residues(), task_pack.designing
 # packer_graph = pyrosetta.rosetta.core.pack.creat_packer_graph(pose, packer_task)
 packer_neighbor_graph = pyrosetta.rosetta.core.pack.create_packer_graph(pose, sfxn, task_pack) #The neighbor graph represents the spatial relationships between residues and is essential for efficient energy calculations.
 rotsets.set_task(task_pack) #associates the rotamer sets with the task pack, indicating which residues and rotamers will be considered during the analysis.
-rotsets.build_rotamers(pose, sfxn, packer_neighbor_graph) #builds rotamers for the protein's residues. Rotamers are alternative conformations of side chains that are sampled during protein modeling.
+rotsets.build_rotamers(pose, sfxn, packer_neighbor_graph) #builds rotamers for all the protein's residues. Rotamers are alternative conformations of side chains that are sampled during protein modeling.
 rotsets.prepare_sets_for_packing(pose, sfxn) #prepares the rotamer sets for packing calculations by potentially reducing the set of rotamers based on their energies.
 ig = InteractionGraphFactory.create_interaction_graph(task_pack, rotsets, pose, sfxn, packer_neighbor_graph)
 print("built", rotsets.nrotamers(), "rotamers at", rotsets.nmoltenres(), "positions.")
@@ -89,26 +89,30 @@ output_file = "score_summary.csv"
 
 
 with open(output_file, "w") as f:
-    for residue_i in range(1, residue_count):
-        rotamer_set_i = RotamerSet(pose, residue_i)
+    for residue_i in range(1, residue_count + 1):
+        rotamer_set_i = rotsets.rotamer_set_for_residue(residue_i) # to access the rotamers generated before (line 69) to calculate the pairwise interaction energies
+        if rotamer_set_i == None: # skip if no rotamers for the residue
+            continue
 
-        for rotamer_i in range(rotamer_set_i.num_rotamers()):
-            rotamer_set_i.set_rotamer(rotamer_i)
-
-            for residue_j in range(1, residue_count):
+        for rotamer_i in range(1, rotamer_set_i.num_rotamers() + 1):
+            for residue_j in range(1, residue_count + 1):
                 if residue_i != residue_j:
-                    rotamer_set_j = RotamerSet(residue_j)
+                    rotamer_set_j = rotsets.rotamer_set_for_residue(residue_j)
+                    if rotamer_set_j == None:
+                         continue
 
-                    for rotamer_j in range(rotamer_set_j.num_rotamers()):
-                        rotamer_set_j.set_rotamer(rotamer_j)
+                    for rotamer_j in range(1, rotamer_set_j.num_rotamers() + 1):
+                        # interaction_energy = pose.energies().onebody_energies(residue_i)[rotamer_i] + pose.energies().onebody_energies(residue_j)[rotamer_j]
+                        # interaction_energy += pose.energies().two_body_energy(residue_i, residue_j)[rotamer_i][rotamer_j]
 
-                        interaction_energy = pose.energies().onebody_energies(residue_i) + pose.energies().onebody_energies(residue_j)
-                        interaction_energy += pose.energies().two_body_energy(residue_i, residue_j)
+                        # E[rotamer_i-1, rotamer_j-1] = interaction_energy
+                        E[rotamer_i-1, rotamer_j-1] = ig.get_two_body_energy_for_edge(residue_i, residue_j, rotamer_i, rotamer_j)
 
-                        E[rotamer_i, rotamer_j] = interaction_energy
-                    
-        print("Interaction energy between rotamers of residue 1 and 2:", E[rotamer_i, rotamer_j])
-        f.write(f"Score Interactions between rotamer {rotamer_i} and rotamer {rotamer_j} --->> {E[rotamer_i,rotamer_j]}")
+        # to print and save interactions for each pair of rotamers acrss the residues, not just the last pair
+        for rotamer_i in range(1, rotamer_set_i.num_rotamers() + 1):
+            for rotamer_j in range(1, rotamer_set_j.num_rotamers() + 1):  
+                print(f"Interaction energy between rotamers of residue {residue_i} (rotamer {rotamer_i}) and residue {residue_j} (rotamer {rotamer_j}): {E[rotamer_i-1, rotamer_j-1]}")
+                f.write(f"Score Interactions between residue {residue_i} (rotamer {rotamer_i}) and residue {residue_j} (rotamer {rotamer_j}) --->> {E[rotamer_i-1, rotamer_j-1]}\n")
 
 
 

@@ -66,7 +66,6 @@ sfxn.setup_for_packing(pose, task_pack.designing_residues(), task_pack.designing
 # packer_graph = pyrosetta.rosetta.core.pack.creat_packer_graph(pose, packer_task)
 packer_neighbor_graph = pyrosetta.rosetta.core.pack.create_packer_graph(pose, sfxn, task_pack) #The neighbor graph represents the spatial relationships between residues and is essential for efficient energy calculations.
 
-rotsets.set_task(task_pack) #associates the rotamer sets with the task pack, indicating which residues and rotamers will be considered during the analysis.
 rotsets.build_rotamers(pose, sfxn, packer_neighbor_graph) #builds rotamers for the protein's residues. Rotamers are alternative conformations of side chains that are sampled during protein modeling.
 rotsets.prepare_sets_for_packing(pose, sfxn) #prepares the rotamer sets for packing calculations by potentially reducing the set of rotamers based on their energies.
 ig = InteractionGraphFactory.create_interaction_graph(task_pack, rotsets, pose, sfxn, packer_neighbor_graph)
@@ -74,27 +73,27 @@ print("built", rotsets.nrotamers(), "rotamers at", rotsets.nmoltenres(), "positi
 rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig,1) #This computes energies associated with the rotamers in the context of the protein structure. 
 
 #Loop that calculates the pairwise interaction energies between different rotamers (s_i and s_j) at positions 1 and 2 in the protein. The energies are stored in the E 
-n_rots_I = rotsets.nrotamers_for_moltenres(1) # calculating the number of rotamers for residue 1
-n_rots_J = rotsets.nrotamers_for_moltenres(2)
-
 
 #Analyse energy between residues
 #to isolate the contribution from particular pairs of residues
 # emap = EMapVector()
-E = np.zeros((n_rots_I, n_rots_J))
+max_size = (300,300)
+E = np.zeros(max_size)
 output_file = "score_summary.csv"
 
 with open(output_file, "w") as f:
     for residue_number in range(1, residue_count):
         residue1 = pose.residue(residue_number)
+        n_rots_I = rotsets.nrotamers_for_moltenres(residue_number) # calculating the number of rotamers for residue 1
         if residue_number == residue_count:
             break
         for residue_number2 in range(1, residue_count):
             residue2 = pose.residue(residue_number2)
+            n_rots_J = rotsets.nrotamers_for_moltenres(residue_number2)
         #sfxn.eval_ci_2b(residue1, residue2, pose, emap)
             for rot_i in range(1, n_rots_I + 1):
                  for rot_j in range(1, n_rots_J + 1):
-                        E[rot_i - 1, rot_j - 1] = ig.get_two_body_energy_for_edge(residue_number, residue_number2, rot_i, rot_j)
+                        E[rot_i, rot_j] = ig.get_two_body_energy_for_edge(residue_number, residue_number2, rot_i, rot_j)
                         # emap.set(rot_i, rot_j, interaction_energy)
         print("Interaction energy between rotamers of residue 1 and 2:", E[rot_i, rot_j])
         # print(emap)

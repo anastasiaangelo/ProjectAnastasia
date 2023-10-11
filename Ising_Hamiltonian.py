@@ -109,4 +109,5 @@ with open(output_file, "a", newline='') as f:
             f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()}, rotamer {rot_i} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")
         
 
+#Save the Hamiltonian to a csv file
 np.savetxt("hamiltonian.csv", Hamiltonian, delimiter=",", fmt="%d")

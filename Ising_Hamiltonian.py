@@ -107,18 +107,14 @@ with open(output_file, "a", newline='') as f:
             continue
 
         molten_res_i = rotsets.resid_2_moltenres(residue_number)
-        edge_exists = ig.find_edge(molten_res_i, molten_res_j)
-            
-        if not edge_exists:
-                continue
         
         for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
             S1 = spin_up()
             E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
             Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]*S1
 
-        print(f"Interaction score values of {residue1} with itself {E[rot_i-1][rot_i-1]}")
-        f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")
-       
+            print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {E[rot_i-1][rot_i-1]}")
+            f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()}, rotamer {rot_i} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")
+        
 
 np.savetxt("hamiltonian.csv", Hamiltonian, delimiter=",", fmt="%d")

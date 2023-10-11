@@ -85,7 +85,7 @@ for residue_number in range(1, residue_count):
         max_rotamers = n_rots
 
 E = np.zeros((max_rotamers, max_rotamers))
-output_file = "score_summary.csv"
+output_file = "score_summary2.csv"
 
 
 with open(output_file, "w") as f:

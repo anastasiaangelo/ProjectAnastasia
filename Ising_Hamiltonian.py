@@ -55,14 +55,6 @@ def spin_down():
     return -1
 
 
-# with open(output_file, "r") as f:
-#     reader = csv.reader(f)
-#     rows = list(reader)
-
-# for row in rows:
-#     row.append('new value')
-
-
 #Loop to find hamiltonian values Jij
 with open(output_file, "w") as f:
     for residue_number in range(1, residue_count + 1):

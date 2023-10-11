@@ -1,4 +1,4 @@
-# Now contrsuct the Hamiltonian for our problem using the interaction energies previously calculated
+### Now contrsuct the Hamiltonian for our problem using the interaction energies previously calculated
 import pyrosetta; pyrosetta.init()
 from pyrosetta.teaching import *
 from pyrosetta import *
@@ -6,13 +6,14 @@ from pyrosetta import *
 import csv
 import sys
 import numpy as np
-#np.set_printoptions(threshold=sys.maxsize)
+
 from matplotlib import pyplot as plt
 from pyrosetta.rosetta.core.pack.rotamer_set import RotamerSets
 from pyrosetta.rosetta.core.pack.task import TaskFactory
 from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
+
 
 #Initiate structure, scorefunction
 pose = pyrosetta.pose_from_pdb("6Q21_A.pdb")
@@ -23,7 +24,7 @@ relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)
 relax_protocol.apply(pose)
 
-#Define task and interaction graph
+#Define task, interaction graph and rotamer sets (detailed comments on model_protein_csv.py)
 task_pack = TaskFactory.create_packer_task(pose) 
 rotsets = RotamerSets()
 pose.update_residue_neighbors()
@@ -48,6 +49,7 @@ Hamiltonian = np.zeros((max_rotamers, max_rotamers))
 
 output_file = "hamiltonian_terms.csv"
 
+#Spin functions to define Pauli states
 def spin_up():
     return +1
 
@@ -55,7 +57,7 @@ def spin_down():
     return -1
 
 
-#Loop to find hamiltonian values Jij
+#Loop to find Hamiltonian values Jij
 with open(output_file, "w") as f:
     for residue_number in range(1, residue_count + 1):
         rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
@@ -90,12 +92,12 @@ with open(output_file, "w") as f:
 
                     
 
-#Loop to find hamiltonian values Jii
+#Loop to find Hamiltonian values Jii
 with open(output_file, "a", newline='') as f:
     for residue_number in range(1, residue_count + 1):
         residue1 = pose.residue(residue_number)
         rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
-        if rotamer_set_i == None: # skip if no rotamers for the residue
+        if rotamer_set_i == None: 
             continue
 
         molten_res_i = rotsets.resid_2_moltenres(residue_number)
@@ -108,6 +110,7 @@ with open(output_file, "a", newline='') as f:
             print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {E[rot_i-1][rot_i-1]}")
             f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()}, rotamer {rot_i} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")
         
+
 
 #Save the Hamiltonian to a csv file
 np.savetxt("hamiltonian.csv", Hamiltonian, delimiter=",", fmt="%d")

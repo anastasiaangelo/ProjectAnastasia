@@ -91,6 +91,7 @@ output_file = "score_summary.csv"
 with open(output_file, "w") as f:
     for residue_i in range(1, residue_count + 1):
         rotamer_set_i = rotsets.rotamer_set_for_residue(residue_i) # to access the rotamers generated before (line 69) to calculate the pairwise interaction energies
+        molten_res_i = rotsets.resid_2_moltenres(residue_i)
         if rotamer_set_i == None: # skip if no rotamers for the residue
             continue
 
@@ -98,6 +99,7 @@ with open(output_file, "w") as f:
             for residue_j in range(1, residue_count + 1):
                 if residue_i != residue_j:
                     rotamer_set_j = rotsets.rotamer_set_for_residue(residue_j)
+                    molten_res_j = rotsets.resid_2_moltenres(residue_j)
                     if rotamer_set_j == None:
                          continue
 
@@ -106,7 +108,7 @@ with open(output_file, "w") as f:
                         # interaction_energy += pose.energies().two_body_energy(residue_i, residue_j)[rotamer_i][rotamer_j]
 
                         # E[rotamer_i-1, rotamer_j-1] = interaction_energy
-                        E[rotamer_i-1, rotamer_j-1] = ig.get_two_body_energy_for_edge(residue_i, residue_j, rotamer_i, rotamer_j)
+                        E[rotamer_i-1, rotamer_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rotamer_i, rotamer_j)
 
         # to print and save interactions for each pair of rotamers acrss the residues, not just the last pair
         for rotamer_i in range(1, rotamer_set_i.num_rotamers() + 1):

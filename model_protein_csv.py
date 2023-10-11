@@ -138,31 +138,33 @@ with open(output_file, "w") as f:
                     f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {E[rot_i-1, rot_j-1]}\n")
 
 
-
+### Alterative loop, not sure if it works, think it gives all 0.0 energy values
 # with open(output_file, "w") as f:
-#     for residue_number in range(1, residue_count):
-#         n_rots_I = rotsets.nrotamers_for_moltenres(residue_number) # calculating the number of rotamers for residue 1
-#         if n_rots_I == 0: # skip if no rotamers for the residue
+#     for residue_i in range(1, residue_count + 1):
+#         rotamer_set_i = rotsets.rotamer_set_for_residue(residue_i) # to access the rotamers generated before (line 69) to calculate the pairwise interaction energies
+#         molten_res_i = rotsets.resid_2_moltenres(residue_i)
+#         if rotamer_set_i == None: # skip if no rotamers for the residue
 #             continue
 
-#         residue1 = pose.residue(residue_number)
-#         print(f"first loop: number {residue_number} residue is {residue1.name3()} and has {n_rots_I} rotamers")
+#         for rotamer_i in range(1, rotamer_set_i.num_rotamers() + 1):
+#             for residue_j in range(1, residue_count + 1):
+#                 if residue_i != residue_j:
+#                     rotamer_set_j = rotsets.rotamer_set_for_residue(residue_j)
+#                     molten_res_j = rotsets.resid_2_moltenres(residue_j)
+#                     if rotamer_set_j == None:
+#                          continue
 
-#         for rotamer_i in range(1, n_rots_I):
-#             rotamer_set_i
-#             n_rots_J = rotsets.nrotamers_for_moltenres(residue_number2)
-#             if n_rots_J == 0:
-#                 continue
+#                     for rotamer_j in range(1, rotamer_set_j.num_rotamers() + 1):
+#                         # interaction_energy = pose.energies().onebody_energies(residue_i)[rotamer_i] + pose.energies().onebody_energies(residue_j)[rotamer_j]
+#                         # interaction_energy += pose.energies().two_body_energy(residue_i, residue_j)[rotamer_i][rotamer_j]
 
-#             residue2 = pose.residue(residue_number2)
-#             print(f"second loop: number {residue_number2} residue is {residue2.name3()} and has {n_rots_J} rotamers")
-        
-#             for rot_i in range(1, n_rots_I + 1):
-#                  for rot_j in range(1, n_rots_J + 1):
-#                         # print(f"now considering rotamer {rot_i} and rotamer {rot_j}")
-#                         E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(residue_number, residue_number2, rot_i, rot_j)
-#                         f.write(f"Pairwise interaction rotamer {rot_i} and rotamer {rot_j} --> {E[rot_i-1, rot_j-1]}")
-                        
-#         # print("Interaction energy between rotamers of residue 1 and 2:", E[rot_i, rot_j])
-#         # f.write(f"Score Interactions between residue {residue_number} : {residue1.name3()} and residue {residue_number2} : {residue2.name3()} --> {E[rot_i, rot_j]}")
+#                         # E[rotamer_i-1, rotamer_j-1] = interaction_energy
+#                         E[rotamer_i-1, rotamer_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rotamer_i, rotamer_j)
+
+#         # to print and save interactions for each pair of rotamers acrss the residues, not just the last pair
+#         for rotamer_i in range(1, rotamer_set_i.num_rotamers() + 1):
+#             for rotamer_j in range(1, rotamer_set_j.num_rotamers() + 1):  
+#                 print(f"Interaction energy between rotamers of residue {residue_i} (rotamer {rotamer_i}) and residue {residue_j} (rotamer {rotamer_j}): {E[rotamer_i-1, rotamer_j-1]}")
+#                 f.write(f"Score Interactions between residue {residue_i} (rotamer {rotamer_i}) and residue {residue_j} (rotamer {rotamer_j}) --->> {E[rotamer_i-1, rotamer_j-1]}\n")
+
 

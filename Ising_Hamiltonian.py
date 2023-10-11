@@ -14,6 +14,7 @@ from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
 
+#initiate structure, scorefunction
 pose = pyrosetta.pose_from_pdb("inputs/6Q21_A.pdb")
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
@@ -22,9 +23,31 @@ relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)
 relax_protocol.apply(pose)
 
-Dim = residue_count + 1
+#define task and interaction graph
+task_pack = TaskFactory.create_packer_task(pose) 
+rotsets = RotamerSets()
+pose.update_residue_neighbors()
+sfxn.setup_for_packing(pose, task_pack.designing_residues(), task_pack.designing_residues())
+packer_neighbor_graph = pyrosetta.rosetta.core.pack.create_packer_graph(pose, sfxn, task_pack)
+rotsets.set_task(task_pack)
+rotsets.build_rotamers(pose, sfxn, packer_neighbor_graph)
+rotsets.prepare_sets_for_packing(pose, sfxn) 
+ig = InteractionGraphFactory.create_interaction_graph(task_pack, rotsets, pose, sfxn, packer_neighbor_graph)
+print("built", rotsets.nrotamers(), "rotamers at", rotsets.nmoltenres(), "positions.")
+rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig, 1)
 
-Hamiltonian = np.zeros((Dim, Dim))
+#define dimension for matrix
+max_rotamers = 0
+for residue_number in range(1, residue_count):
+    n_rots = rotsets.nrotamers_for_moltenres(residue_number)
+    if n_rots > max_rotamers:
+        max_rotamers = n_rots
+
+E = np.zeros((max_rotamers, max_rotamers))
+Hamiltonian = np.zeros((max_rotamers, max_rotamers))
+
+output_file = "hamiltonian_terms.csv"
+Jii_terms = "diag_terms_ham.csv"
 
 def spin_up():
     return +1
@@ -32,10 +55,6 @@ def spin_up():
 def spin_down():
     return -1
 
-
-emap = EMapVector()
-output_file = "hamiltonian_terms.csv"
-Jii_terms = "diag_terms_ham.csv"
 
 # with open(output_file, "r") as f:
 #     reader = csv.reader(f)

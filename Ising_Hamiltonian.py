@@ -1,19 +1,23 @@
 # Now contrsuct the Hamiltonian for our problem using the interaction energies previously calculated
 import pyrosetta; pyrosetta.init()
-
 from pyrosetta.teaching import *
 from pyrosetta import *
-init()
 
-from pyrosetta.rosetta.core.scoring import EMapVector
+import csv
+import sys
 import numpy as np
 #np.set_printoptions(threshold=sys.maxsize)
 from matplotlib import pyplot as plt
-import csv
+from pyrosetta.rosetta.core.pack.rotamer_set import RotamerSets
+from pyrosetta.rosetta.core.pack.task import TaskFactory
+from pyrosetta.rosetta.core.pack.rotamer_set import *
+from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
+from pyrosetta.rosetta.core.pack.task import *
 
 pose = pyrosetta.pose_from_pdb("inputs/6Q21_A.pdb")
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
+
 relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)
 relax_protocol.apply(pose)

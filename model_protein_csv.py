@@ -138,6 +138,23 @@ with open(output_file, "w") as f:
                     f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {E[rot_i-1, rot_j-1]}\n")
 
 
+# #To calculate the one body interactions
+# with open(output_file, "a", newline='') as f:
+#     for residue_number in range(1, residue_count + 1):
+#         rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
+#         if rotamer_set_i == None: 
+#             continue
+
+#         molten_res_i = rotsets.resid_2_moltenres(residue_number)
+        
+#         for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
+#             E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
+
+#             print(f"Interaction score values of residue {residue_number} rotamer {rot_i} with itself {E[rot_i-1,rot_i-1]}")
+#             f.write(f"Score Interaction of residue {residue_number}, rotamer {rot_i} with itself --> {E[rot_i-1, rot_i-1]} \n\n")
+        
+
+
 ### Alterative loop, not sure if it works, think it gives all 0.0 energy values
 # with open(output_file, "w") as f:
 #     for residue_i in range(1, residue_count + 1):

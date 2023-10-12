@@ -136,4 +136,11 @@ print(mod.prettyprint())
 sub = mod.substitute_variables(constants={"x": 0}, variables={"y": ("z", -1)})
 print(sub.prettyprint())
 
+## Convert a given optimization problem to a new problem that is a QUBO
+from qiskit_optimization.problems import QuadraticProgram
+from qiskit_optimization.converters import QuadraticProgramToQubo
 
+problem = QuadraticProgram()
+#define a problem
+conv = QuadraticProgramToQubo()
+problem2 = conv.convert(problem)

@@ -87,8 +87,8 @@ with open(output_file, "w") as f:
     
         for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
             for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
-                print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", E[rot_i-1, rot_j-1])
-                f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {E[rot_i-1, rot_j-1]}\n")
+                print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
+                f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {Hamiltonian[rot_i-1, rot_j-1]}\n")
 
                     
 
@@ -107,7 +107,7 @@ with open(output_file, "a", newline='') as f:
             E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
             Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]*S1
 
-            print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {E[rot_i-1][rot_i-1]}")
+            print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
             f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()}, rotamer {rot_i} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")
         
 

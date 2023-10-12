@@ -1,0 +1,103 @@
+/* This code is a Qiskit project.
+ *
+ * (C) Copyright IBM 2023.
+ *
+ * This code is licensed under the Apache License, Version 2.0. You may
+ * obtain a copy of this license in the LICENSE.txt file in the root directory
+ * of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Any modifications or derivative works of this code must retain this
+ * copyright notice, and modified files need to carry a notice indicating
+ * that they have been altered from the originals.
+ */
+
+body {
+  // By default, Furo uses an aggressive red color for API docs. We use a more muted black and gray.
+  --color-api-name: var(--color-foreground-primary);
+  --color-api-pre-name: var(--color-foreground-secondary);
+  // Use normal font sizes rather than the default of `--font-size-small`.
+  --api-font-size: var(--font-size-normal);
+}
+
+// Definition lists are used for sections like "Parameters", "Return type", and "Attributes"
+// (properties of a class).
+dl.py:not(.docutils) dt {
+  // This causes the definition-term and its border-top to only take up as much space as the
+  // content, plus padding and margins.
+  display: inline-block;
+  border-top: 1px solid var(--color-brand-primary);
+  background-color: var(--color-background-secondary);
+}
+
+// Some code objects have a `[source]` text that normally floats to the right. While that usually
+// looks better, it results in messed up styling on long code signatures where the `[source]
+// overlaps with actual code. That often happens with Qiskit APIs, so it's not worth the sometimes
+// nicer styling.
+.viewcode-back,
+.viewcode-link {
+  float: unset;
+  text-align: unset;
+  margin-left: 0.75em;
+}
+
+// Use a thicker border for top-level code objects to distinguish from their metadata like
+// `Returns` and `Return type`.
+dl.py:not(.docutils).class > dt,
+dl.py:not(.docutils).method > dt,
+dl.py:not(.docutils).function > dt,
+dl.py:not(.docutils).attribute > dt {
+  border-top-width: 2px;
+}
+
+// Rules that impact the top-level entry for the code object at the top of the file. These add
+// spacing between the page header and the top entry. We also make it stretch across the entire
+// screen for better information hierarchy.
+section > dl.py:not(.docutils) {
+  > dt {
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  // It's possible to have multiple entries for the same code object, e.g. when using typing.overload.
+  // This cancels out the margin-bottom such that only the bottom-most `dt` will have a margin-bottom
+  // in effect.
+  > dt:not(:first-child) {
+    margin-top: -1rem;
+  }
+}
+
+// Fix some of the definition terms like "Parameters" having no padding and being in all caps.
+dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) {
+  //  Some Qiskit projects, like Experiments, use custom API sections. Those don't set the class
+  // `.field-list` on the `dl`, so we change Furo's selector from `.field-list > dt` to `dl > dt`.
+  dl > dt {
+    font-weight: 700;
+    // Copied from Furo's `.sig:not(.sig-inline)`
+    padding: .25rem .5rem .25rem 3em;
+    text-indent: -2.5em;
+  }
+
+  // But, to override Furo's properties we don't like, we also have to use `.field-list > dt` for some
+  // rules to win the specificity war.
+  .field-list > dt {
+    text-transform: unset;
+    font-size: unset;
+  }
+}
+
+.sig:not(.sig-inline) {
+  background: var(--color-background-secondary);
+  border-radius: 0;
+}
+
+// Revert Furo's special-casing of rubrics for API docs. These rubrics are used for top-level
+// section headers like "Attributes" and "Methods". We disagree with the design in
+// https://github.com/pradyunsg/furo/discussions/505. Instead, use the rules from `p.rubric`.
+dl.py dd p.rubric {
+  font-size: 125%;  // We make this bigger than p.rubric to match the bigger font sizes for the page.
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: unset;
+  // This is custom because Furo doesn't have enough space by default.
+  margin-top: 1.25em;
+}

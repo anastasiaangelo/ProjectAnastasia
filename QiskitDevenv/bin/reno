@@ -1,0 +1,10 @@
+#!/Users/aag/Documents/ProjectAnastasiaClone/ProjectAnastasia/QiskitDevenv/bin/python
+# PBR Generated from 'console_scripts'
+
+import sys
+
+from reno.main import main
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,33 @@
+/* This code is a Qiskit project.
+ *
+ * (C) Copyright IBM 2023.
+ *
+ * This code is licensed under the Apache License, Version 2.0. You may
+ * obtain a copy of this license in the LICENSE.txt file in the root directory
+ * of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Any modifications or derivative works of this code must retain this
+ * copyright notice, and modified files need to carry a notice indicating
+ * that they have been altered from the originals.
+ */
+
+body {
+  --font-stack: 'IBM Plex Sans', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-stack--monospace: 'IBM Plex Mono', 'Consolas', 'Courier New', monospace;
+}
+
+// Carbon only uses bold for the smallest headers:
+// https://carbondesignsystem.com/guidelines/typography/type-sets/
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 400;
+}
+
+// Fix in-line table of contents caption headers to not be upper-case and
+// small font. (That is, ToCs on the page itself.)
+.toctree-wrapper.compound .caption {
+  text-transform: none;
+  font-size: unset;
+}

@@ -1,0 +1,193 @@
+/* This code is a Qiskit project.
+ *
+ * (C) Copyright IBM 2023.
+ *
+ * This code is licensed under the Apache License, Version 2.0. You may
+ * obtain a copy of this license in the LICENSE.txt file in the root directory
+ * of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Any modifications or derivative works of this code must retain this
+ * copyright notice, and modified files need to carry a notice indicating
+ * that they have been altered from the originals.
+ */
+
+// We use https://carbondesignsystem.com/components/notification/style/ for admonitions
+// (e.g. warning boxes. We don't use the Success admonition though.
+
+// See https://carbondesignsystem.com/guidelines/color/usage and
+// https://carbondesignsystem.com/components/notification/style/ for where these colors
+// come from.
+$info-background: #edf5ff;
+$info-border: #0043ce;
+$warning-background: #fcf4d6;
+$warning-border: #f1c21b;
+$error-background: #fff1f1;
+$error-border: #da1e28;
+
+.topic {
+  border: 1px solid $info-background;
+}
+
+p.topic-title {
+  background-color: $info-background;
+
+  &::before {
+    -webkit-mask-image: var(--icon-info);
+    mask-image: var(--icon-info);
+    background-color: $info-border;
+  }
+}
+
+// Admonitions are complex because they use a 3px left border with a different color than the rest
+// of the div. If we naively used `border-left`, we'd end up with a weird-looking diagonal, as
+// described at
+// https://stackoverflow.com/questions/18129718/weird-css-behavior-diagonal-border-why-is-the-border-edge-not-straight.
+// So, instead, we use `.admonition::before` to set up the left border.
+//
+// We don't specify the border colors or the `background` for `.admonition::before` because each
+// specific admonition type will set them. We also don't set a border-top because we expect the
+// border color to be the same as the top's background.
+.admonition {
+  border-left: 0;  // Turn off Furo's border.
+  border-right-style: solid;
+  border-right-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  position: relative;
+  padding-left: 12px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+  }
+}
+
+.admonition.attention,
+.admonition.caution,
+.admonition.important,
+.admonition.warning {
+  border-color: $warning-background;
+
+  &::before {
+    background: $warning-border;
+  }
+
+  > .admonition-title {
+    background-color: $warning-background;
+  }
+
+  > .admonition-title::before {
+    // Rather than using mask-image like Furo normally does, we set `content` to the SVG. This is
+    // because Carbon requires that we have a black exclamation mark for accessibility: the
+    // light yellow background wouldn't be distinct enough compared to the dark yellow icon. Mask
+    // image doesn't let us set colors, only whether to use the background color of the underlying
+    // HTML element vs. use the background color of the SVG container. So, having a black exclamation
+    // mark would require setting the entire .admonition-title background color to black.
+    content: var(--icon-warning);
+    -webkit-mask-image: unset;
+    mask-image: unset;
+    background-color: $warning-background;
+  }
+}
+
+.admonition.danger,
+.admonition.error {
+  border-color: $error-background;
+
+  &::before {
+    background: $error-border;
+  }
+
+  > .admonition-title {
+    background-color: $error-background;
+  }
+
+  > .admonition-title::before {
+    -webkit-mask-image: var(--icon-failure);
+    mask-image: var(--icon-failure);
+    background-color: $error-border;
+  }
+}
+
+.admonition,
+.admonition.hint,
+.admonition.note,
+.admonition.tip {
+  border-color: $info-background;
+
+  &::before {
+    background: $info-border;
+  }
+
+  > .admonition-title {
+    background-color: $info-background;
+  }
+
+  > .admonition-title::before {
+    -webkit-mask-image: var(--icon-info);
+    mask-image: var(--icon-info);
+    background-color: $info-border;
+  }
+}
+
+// Style deprecations like a warning.
+div.deprecated {
+  border-color: $warning-background;
+  border-left: 0;
+  border-right-style: solid;
+  border-right-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  position: relative;
+  background: var(--color-admonition-background);
+  font-size: var(--admonition-font-size);
+  margin: 1rem auto;
+  overflow: hidden;
+  padding: 0 0.5rem 0.5rem;
+  padding-left: 12px;
+  page-break-inside: avoid;
+}
+
+div.deprecated::before {
+  background: $warning-border;
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+}
+
+span.deprecated {
+  background-color: $warning-background;
+  font-size: var(--admonition-title-font-size);
+  line-height: 1.3;
+  margin: 0 -0.5rem 0.25rem -0.55rem;
+  padding: 0.4rem;
+  position: relative;
+  display: block;
+
+  // Turn off italics from Furo.
+  font-style: normal;
+}
+
+span.deprecated::before {
+  content: "";
+  display: inline-block;
+  background-image: var(--icon-warning);
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  // This aligns the icon with the text properly.
+  vertical-align: bottom;
+}
+
+div.deprecated p,
+div.versionchanged p {
+  margin-bottom: 0;
+  margin-top: 0;
+}

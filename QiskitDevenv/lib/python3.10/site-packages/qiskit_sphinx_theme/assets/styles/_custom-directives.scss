@@ -1,0 +1,168 @@
+/* This code is a Qiskit project.
+ *
+ * (C) Copyright IBM 2023.
+ *
+ * This code is licensed under the Apache License, Version 2.0. You may
+ * obtain a copy of this license in the LICENSE.txt file in the root directory
+ * of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Any modifications or derivative works of this code must retain this
+ * copyright notice, and modified files need to carry a notice indicating
+ * that they have been altered from the originals.
+ */
+
+// This creates a purple border at the bottom. We set the width to 0. The relevant rule
+// should change the width to 100% on hover so that it transitions in.
+@mixin brand-color-underline {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 0;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+  background-color: var(--color-brand-primary);
+  transition: width .250s ease-in-out;
+}
+
+// -------------------------------------------------------------------------------
+// qiskit-card
+// -------------------------------------------------------------------------------
+
+.qiskit-card {
+  position: relative;  // Needed for `.qiskit-card::after`.
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 12rem;
+  margin-bottom: 1.875rem;
+
+  border: 1px solid var(--color-table-border);
+  background-color: var(--color-sidebar-background);
+  cursor: pointer;
+
+  // Turn off default rules for `<a>`.
+  color: unset;
+  text-decoration: none;
+
+  p {
+    color: var(--color-sidebar-link-text);
+  }
+
+  &::after {
+    @include brand-color-underline;
+  }
+
+  &:hover {
+    background-color: unset;
+    border-bottom: none;
+
+    // Turn off default rule for `<a>`.
+    color: unset;
+
+    p {
+      color: unset;
+    }
+
+    &::after {
+      width: 100%;
+    }
+
+    .qiskit-card-image-container {
+      opacity: unset;
+    }
+  }
+}
+
+.qiskit-card-text-container {
+  flex-grow: 1;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.qiskit-card-image-container {
+  flex-shrink: 0;
+  height: 100%;
+  width: 20rem;  // We use a fixed width so the image doesn't keep resizing.
+
+  opacity: 0.7;
+
+  @media (max-width: 67em) {
+    width: 15rem;
+  }
+
+  @media (max-width: 40em) {
+    width: 10rem;
+  }
+
+  // Float the image to the right of the container.
+  // Center it vertically if the image isn't tall enough.
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: flex-end;
+
+  img {
+    object-fit: contain;
+    max-width: 100%;
+  }
+}
+
+// -------------------------------------------------------------------------------
+// qiskit-call-to-action
+// -------------------------------------------------------------------------------
+
+.qiskit-call-to-action-grid  {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.qiskit-call-to-action-item {
+  flex: 0 0 50%;
+  max-width: 50%;
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  margin-bottom: 2rem;
+  padding-right: 3rem;
+
+  // On mobile, only display one CAT per row.
+  @media (max-width: 67em) {
+    flex-basis: 100%;
+    max-width: 100%;
+    padding-right: 0;
+  }
+
+  p {
+    color: var(--color-sidebar-link-text);
+    font-size: 1.125rem;
+  }
+
+  a {
+    font-size: 1.125rem;
+    background-color: var(--color-sidebar-background);
+    color: var(--color-sidebar-link-text);
+    text-decoration: none;
+    -webkit-user-select: none;
+    user-select: none;
+
+    position: relative;
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    padding-right: 2em;
+
+    background-size: 8px 14px;
+    background-position: center right 12px;
+    background-image: var(--qiskit-icon-chevron-right-purple);
+    background-repeat: no-repeat;
+  }
+
+  a::after {
+    @include brand-color-underline;
+  }
+
+  a:hover::after {
+    width: 100%;
+  }
+}

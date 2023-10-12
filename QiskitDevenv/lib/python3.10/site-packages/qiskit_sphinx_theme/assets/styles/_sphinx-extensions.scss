@@ -1,0 +1,34 @@
+/* This code is a Qiskit project.
+ *
+ * (C) Copyright IBM 2023.
+ *
+ * This code is licensed under the Apache License, Version 2.0. You may
+ * obtain a copy of this license in the LICENSE.txt file in the root directory
+ * of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Any modifications or derivative works of this code must retain this
+ * copyright notice, and modified files need to carry a notice indicating
+ * that they have been altered from the originals.
+ */
+
+// ---------------------------------------------------------------------------
+// nbsphinx (tutorials)
+// ---------------------------------------------------------------------------
+
+// Don't have a purple border. This rule overrides `.npshinx-gallery > a`.
+//
+// We keep the default style of the text itself being purple to be consistent with the general style
+// of the site using purple for links.
+.nbsphinx-gallery > a.reference {
+  border: 1px solid var(--color-foreground-secondary);
+}
+
+// ---------------------------------------------------------------------------
+// jupyter-sphinx
+// ---------------------------------------------------------------------------
+
+// Fix for https://github.com/Qiskit/qiskit_sphinx_theme/issues/306. Instead, use the rule from
+// `.highlight pre, pre.literal-block`.
+:not(#specifity-war).jupyter_container div.code_cell pre {
+  padding: .625rem .875rem;
+}

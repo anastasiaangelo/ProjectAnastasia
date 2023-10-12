@@ -1,0 +1,4 @@
+[sphinx.html_themes]
+qiskit = qiskit_sphinx_theme
+qiskit_sphinx_theme = qiskit_sphinx_theme
+qiskit-ecosystem = qiskit_sphinx_theme

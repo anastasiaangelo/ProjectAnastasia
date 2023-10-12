@@ -1,0 +1,43 @@
+{#-
+    This code is a Qiskit project.
+
+  (C) Copyright IBM 2023.
+
+  This code is licensed under the Apache License, Version 2.0. You may
+  obtain a copy of this license in the LICENSE.txt file in the root directory
+  of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+
+  Any modifications or derivative works of this code must retain this
+  copyright notice, and modified files need to carry a notice indicating
+  that they have been altered from the originals.
+-#}
+
+{% if version_list %}
+{#- The HTML and CSS structure is inspired by Furo's left sidebar's table of contents for a
+ top-level page with subpages, but with the text looking like a sidebar caption. It has a
+ similar setup to us: a text label and chevron icon to indicate the section is expandable.
+
+ We use custom class names for clarity and because this isn't an identical replica. The CSS rules
+ explain in comments how the Furo classes map to our classes.
+-#}
+<div class="qiskit-previous-releases-container">
+    <input id="previous-releases-checkbox" name="previous-releases-checkbox" role="switch" type="checkbox">
+    <div class="qiskit-previous-releases-header-container">
+        {#- Using a label for the whole div means the user can click anywhere in it to toggle the checkbox. -#}
+        <label for="previous-releases-checkbox">
+            <p role="note">Previous Releases</p>
+            <div class="qiskit-previous-releases-toggle-container">
+                <div class="visually-hidden">Toggle navigation of Previous Releases</div>
+                <i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i>
+            </div>
+        </label>
+    </div>
+    <div class="qiskit-previous-releases-list-container">
+        <ul>
+        {% for version in version_list | sort(reverse=True) %}
+            <li><a href="{{ previous_versions_url(version) }}" rel="nofollow noindex">{{ version }}</a></li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}

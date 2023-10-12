@@ -59,7 +59,7 @@ def spin_down():
 
 #Loop to find Hamiltonian values Jij
 with open(output_file, "w") as f:
-    for residue_number in range(1, residue_count + 1):
+    for residue_number in range(1, residue_count):
         rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
         if rotamer_set_i == None: # skip if no rotamers for the residue
             continue

@@ -64,11 +64,11 @@ with open(output_file, "w") as f:
         if rotamer_set_i == None: # skip if no rotamers for the residue
             continue
 
-        for residue_number2 in range(1, residue_count+1):
-            residue2 = pose.residue(residue_number2)
-            rotamer_set_j = rotsets.rotamer_set_for_residue(residue_number2)
-            if rotamer_set_j == None:
-                continue
+        residue_number2 = residue_number + 1
+        residue2 = pose.residue(residue_number2)
+        rotamer_set_j = rotsets.rotamer_set_for_residue(residue_number2)
+        if rotamer_set_j == None:
+            continue
 
         molten_res_i = rotsets.resid_2_moltenres(residue_number)
         molten_res_j = rotsets.resid_2_moltenres(residue_number2)
@@ -80,10 +80,10 @@ with open(output_file, "w") as f:
         
         for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
             for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
-                S1 = spin_up()
-                S2 = spin_down()
+                # S1 = spin_up()
+                # S2 = spin_down()
                 E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
-                Hamiltonian[rot_i-1, rot_j-1] = E[rot_i-1, rot_j-1]*S1*S2
+                Hamiltonian[rot_i-1, rot_j-1] = E[rot_i-1, rot_j-1]  #*S1*S2
     
         for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
             for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
@@ -103,9 +103,9 @@ with open(output_file, "a", newline='') as f:
         molten_res_i = rotsets.resid_2_moltenres(residue_number)
         
         for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
-            S1 = spin_up()
+            # S1 = spin_up()
             E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
-            Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]*S1
+            Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]  #*S1
 
             print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
             f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()}, rotamer {rot_i} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")

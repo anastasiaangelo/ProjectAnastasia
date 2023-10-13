@@ -45,7 +45,7 @@ print(qp.prettyprint())
 # initializing the MinimumEigensolver we want to use.
 algorithm_globals.random_seed = 10598       #sets the random seed for the random number generator used by the quantum algorithms in Qiskit. Setting a random seed ensures that the algorithm's behavior is reproducible
 qaoa_mes = QAOA(sampler=Sampler(), optimizer=COBYLA(), initial_point=[0.0, 0.0])    #creates a Quantum Approximate Optimization Algorithm (QAOA) instance
-exact_mes = NumPyMinimumEigensolver()       #creates an instance of the NumPyMinimumEigensolver, a classical algorithm  for solving for the minimum eigenvalue and eigenvector of a matrix
+exact_mes = NumPyMinimumEigensolver()       #creates an instance of the NumPyMinimumEigensolver, a classical algorithm for solving for the minimum eigenvalue and eigenvector of a matrix
 
 # we use the MinimumEigensolver to create MinimumEigenOptimizer
 qaoa = MinimumEigenOptimizer(qaoa_mes)  # using QAOA, creating an instance of the class

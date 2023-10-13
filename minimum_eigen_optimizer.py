@@ -100,3 +100,23 @@ samples_for_plot
 
 plot_histogram(samples_for_plot)
 plt.show()
+
+## RecursiveMinimumEingenOptimizer
+#eakes a MinimumEigenOptimizer as input and applies the recursive optimization scheme to reduce the size of the problem one variable at a time.
+#construct the RecursiveMinimumEigenOptimizer such that it reduces the problem size from 3 variables to 1 variable and then uses the exact solver for the last variable
+rqaoa = RecursiveMinimumEigenOptimizer(qaoa, min_num_vars=1, min_num_vars_optimizer=exact)
+rqaoa_result = rqaoa.solve(qubo)
+print(rqaoa_result.prettyprint())
+
+filtered_samples = get_filtered_samples(
+    rqaoa_result.samples, threshold=0.005, allowed_status=(OptimizationResultStatus.SUCCESS,)
+)
+
+samples_for_plot = {
+    " ".join(f"{rqaoa_result.variables[i].name}={int(v)}" for i, v in enumerate(s.x)): s.probability
+    for s in filtered_samples
+}
+samples_for_plot
+
+plot_histogram(samples_for_plot)
+plt.show()

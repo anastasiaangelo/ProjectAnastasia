@@ -47,7 +47,7 @@ print()
 print(mod.prettyprint())    # to generate a comprehensive string representation
 
 
-# Directly constructing a QuadraticProgram
+## Directly constructing a QuadraticProgram
 
 # make an empty problem
 mod = QuadraticProgram("my problem")

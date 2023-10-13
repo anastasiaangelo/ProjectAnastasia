@@ -117,6 +117,38 @@ fig.get_axes()[0].view_init(10, 70)
 fig.savefig("protein_structure.png")
 
 
-## An example with sidechains
+### An example with sidechains
 
+peptide = Peptide("APRLR", ["", "", "F", "Y", ""])
+protein_folding_problem = ProteinFoldingProblem(peptide, mj_interaction, penalty_terms)
+qubit_op = protein_folding_problem.qubit_op()
+
+# set classical optimizer
+optimizer = COBYLA(maxiter=50)
+
+# set variational ansatz
+ansatz = RealAmplitudes(reps=1)
+
+counts = []
+values = []
+
+def store_intermediate_result(eval_count, parameters, mean, std):
+    counts.append(eval_count)
+    values.append(mean)
+
+# initialize VQE using CVaR with alpha = 0.1
+vqe = SamplingVQE(
+    Sampler(),
+    ansatz=ansatz,
+    optimizer=optimizer,
+    aggregation=0.1,
+    callback=store_intermediate_result,
+)
+
+raw_result = vqe.compute_minimum_eigenvalue(qubit_op)
+result_2 = protein_folding_problem.interpret(raw_result=raw_result)
+
+fig = result_2.get_figure(title="Protein Structure", ticks=False, grid=True)
+fig.get_axes()[0].view_init(10, 60)
+fig.savefig("protein_structure2.png")
 

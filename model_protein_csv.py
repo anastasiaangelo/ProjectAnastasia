@@ -11,6 +11,7 @@ from pyrosetta.rosetta.core.pack.task import *
 import csv
 import sys
 import numpy as np
+import pandas as pd
 
 
 #Using the protein Ras (PDB 6Q21)
@@ -86,6 +87,9 @@ for residue_number in range(1, residue_count):
 
 E = np.zeros((max_rotamers, max_rotamers))
 output_file = "score_summary.csv"
+data_list = []
+df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
+
 
 #before we enter the inner loop for rotamers, we check if the residues in question have rotamers defined. If not, we skip that particular residue and move on. This way, we avoid accessing undefined rotamers and potential segmentation faults.
 
@@ -99,60 +103,67 @@ output_file = "score_summary.csv"
 
 
 
-with open(output_file, "w") as f:
-    for residue_number in range(1, residue_count):
-        rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number) # calculating the number of rotamers for residue 1
-        if rotamer_set_i == None: # skip if no rotamers for the residue
-            continue
+for residue_number in range(1, residue_count):
+    rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number) # calculating the number of rotamers for residue 1
+    if rotamer_set_i == None: # skip if no rotamers for the residue
+        continue
 
-        print(f"first loop: number {residue_number} residue")
+    print(f"first loop: number {residue_number} residue")
 
-        residue_number2 = residue_number + 1
-        rotamer_set_j = rotsets.rotamer_set_for_residue(residue_number2)
-        if rotamer_set_j == None:
-            continue
+    residue_number2 = residue_number + 1
+    rotamer_set_j = rotsets.rotamer_set_for_residue(residue_number2)
+    if rotamer_set_j == None:
+        continue
 
-        print(f"second loop: number {residue_number2} residue")
+    print(f"second loop: number {residue_number2} residue")
 
-        # Convert residue numbers to molten numbers to work with the interaction graph
-        molten_res_i = rotsets.resid_2_moltenres(residue_number)
-        molten_res_j = rotsets.resid_2_moltenres(residue_number2)
-            
-        # Check if the edge exists in the interaction graph
-        edge_exists = ig.find_edge(molten_res_i, molten_res_j)
-            
-        if not edge_exists:
-            continue
+    # Convert residue numbers to molten numbers to work with the interaction graph
+    molten_res_i = rotsets.resid_2_moltenres(residue_number)
+    molten_res_j = rotsets.resid_2_moltenres(residue_number2)
         
-        for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
-            for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
-                 # print(f"now considering rotamer {rot_i} and rotamer {rot_j}")
+    # Check if the edge exists in the interaction graph
+    edge_exists = ig.find_edge(molten_res_i, molten_res_j)
+        
+    if not edge_exists:
+        continue
+    
+    for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
+        for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
+                # print(f"now considering rotamer {rot_i} and rotamer {rot_j}")
 
-                 E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
-                 # f.write(f"Pairwise interaction rotamer {rot_i} and rotamer {rot_j} --> {E[rot_i-1, rot_j-1]}")
-                        
+                E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
+                # f.write(f"Pairwise interaction rotamer {rot_i} and rotamer {rot_j} --> {E[rot_i-1, rot_j-1]}")
+                    
 
-        for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
-            for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
-                print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", E[rot_i-1, rot_j-1])
-                f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {E[rot_i-1, rot_j-1]}\n")
+    for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
+        for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
+            print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", E[rot_i-1, rot_j-1])
+            # f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {E[rot_i-1, rot_j-1]}\n")
+            data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': E[rot_i-1, rot_j-1]}
+            data_list.append(data)
 
 
 #To calculate the one body interactions
-with open(output_file, "a", newline='') as f:
-    for residue_number in range(1, residue_count + 1):
-        rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
-        if rotamer_set_i == None: 
-            continue
+for residue_number in range(1, residue_count + 1):
+    rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
+    if rotamer_set_i == None: 
+        continue
 
-        molten_res_i = rotsets.resid_2_moltenres(residue_number)
-        
-        for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
-            E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
+    molten_res_i = rotsets.resid_2_moltenres(residue_number)
+    
+    for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
+        E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
 
-            print(f"Interaction score values of residue {residue_number} rotamer {rot_i} with itself {E[rot_i-1,rot_i-1]}")
-            f.write(f"Score Interaction of residue {residue_number}, rotamer {rot_i} with itself --> {E[rot_i-1, rot_i-1]} \n\n")
-        
+        print(f"Interaction score values of residue {residue_number} rotamer {rot_i} with itself {E[rot_i-1,rot_i-1]}")
+        # f.write(f"Score Interaction of residue {residue_number}, rotamer {rot_i} with itself --> {E[rot_i-1, rot_i-1]} \n\n")
+        data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': E[rot_i-1, rot_i-1]}
+        data_list.append(data)
+
+           
+df = pd.DataFrame(data_list)
+df.to_csv('score_summary2.csv', index=False)
+
+
 
 
 ### Alterative loop, not sure if it works, think it gives all 0.0 energy values

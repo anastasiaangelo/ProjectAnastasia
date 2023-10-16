@@ -91,7 +91,6 @@ for residue_number in range(1, residue_count):
     for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
         for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
             print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
-            # f.write(f"Score Interactions between residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} -> {Hamiltonian[rot_i-1, rot_j-1]}\n")
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
                 
@@ -111,14 +110,11 @@ for residue_number in range(1, residue_count + 1):
         Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]  #*S1
 
         print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
-        # f.write(f"Score Interaction of residue {residue_number} : {residue1.name3()}, rotamer {rot_i} with itself --> {Hamiltonian[rot_i-1, rot_i-1]} \n\n")
         data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i, 'E_ij': Hamiltonian[rot_i-1, rot_i-1]}
         data_list.append(data)
     
 
 
 #Save the Hamiltonian to a csv file
-np.savetxt("hamiltonian.csv", Hamiltonian, delimiter=",", fmt="%d")
-
 df = pd.DataFrame(data_list)
 df.to_csv('hamiltonian_terms.csv', index=False)

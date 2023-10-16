@@ -156,7 +156,7 @@ for residue_number in range(1, residue_count + 1):
 
         print(f"Interaction score values of residue {residue_number} rotamer {rot_i} with itself {E[rot_i-1,rot_i-1]}")
         # f.write(f"Score Interaction of residue {residue_number}, rotamer {rot_i} with itself --> {E[rot_i-1, rot_i-1]} \n\n")
-        data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': E[rot_i-1, rot_i-1]}
+        data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i, 'E_ij': E[rot_i-1, rot_i-1]}
         data_list.append(data)
 
            

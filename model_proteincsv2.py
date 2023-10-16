@@ -93,6 +93,7 @@ data_list = []
 df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
 
 
+#using panda to save file better
 
 for residue_i in range(1, residue_count):
     rotamer_set_i = rotsets.rotamer_set_for_residue(residue_i) # to access the rotamers generated before (line 69) to calculate the pairwise interaction energies

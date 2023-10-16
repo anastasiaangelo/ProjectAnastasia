@@ -161,7 +161,7 @@ for residue_number in range(1, residue_count + 1):
 
            
 df = pd.DataFrame(data_list)
-df.to_csv('score_summary2.csv', index=False)
+df.to_csv('score_summary.csv', index=False)
 
 
 

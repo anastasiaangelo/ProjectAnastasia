@@ -15,6 +15,7 @@ from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta.toolbox import cleanATOM
+from scipy.optimize import minimize
 
 
 #Initiate structure, scorefunction
@@ -102,23 +103,23 @@ for residue_number in range(1, residue_count):
      
      
      
-#Loop to find interaction of NN rotamers on the same residue
-for residue_number in range(1, residue_count + 1):
-    residue1 = pose.residue(residue_number)
-    rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
-    if rotamer_set_i == None: 
-        continue
+# #Loop to find interaction of NN rotamers on the same residue --> stupid doesn't make sense, rotamers cant interact which each other since they can't coexist at the same time
+# for residue_number in range(1, residue_count + 1):
+#     residue1 = pose.residue(residue_number)
+#     rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
+#     if rotamer_set_i == None: 
+#         continue
 
-    molten_res_i = rotsets.resid_2_moltenres(residue_number)
+#     molten_res_i = rotsets.resid_2_moltenres(residue_number)
 
-    for rot_i in range(1, rotamer_set_i.num_rotamers()):
-        # S1 = spin_up()
-        E[rot_i-1, rot_i] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_i, rot_i, rot_i+1)
-        Hamiltonian[rot_i-1, rot_i] = E[rot_i-1, rot_i]  #*S1*S2
+#     for rot_i in range(1, rotamer_set_i.num_rotamers()):
+#         # S1 = spin_up()
+#         E[rot_i-1, rot_i] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_i, rot_i, rot_i+1)
+#         Hamiltonian[rot_i-1, rot_i] = E[rot_i-1, rot_i]  #*S1*S2
 
-        print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and rotamer {rot_i+1} :", Hamiltonian[rot_i-1, rot_i])
-        data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i+1, 'E_ij': Hamiltonian[rot_i-1, rot_i]}
-        data_list.append(data)
+#         print(f"Interaction energy between rotamer {rot_i} and rotamer {rot_i+1} of residue {residue_number} :", Hamiltonian[rot_i-1, rot_i])
+#         data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i+1, 'E_ij': Hamiltonian[rot_i-1, rot_i]}
+#         data_list.append(data)
            
 
 #Loop to find Hamiltonian values Jii
@@ -144,3 +145,4 @@ for residue_number in range(1, residue_count + 1):
 #Save the Hamiltonian to a csv file
 df = pd.DataFrame(data_list)
 df.to_csv('hamiltonian_terms.csv', index=False)
+

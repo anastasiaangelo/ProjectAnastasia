@@ -42,10 +42,14 @@ rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig, 1)
 
 #Define dimension for matrix
 max_rotamers = 0
-for residue_number in range(1, residue_count):
+for residue_number in range(1, residue_count+1):        #range was not correct
     n_rots = rotsets.nrotamers_for_moltenres(residue_number)
+    print(f"Residue {residue_number} has {n_rots} rotamers.")
     if n_rots > max_rotamers:
         max_rotamers = n_rots
+
+print("Maximum number of rotamers:", max_rotamers)
+
 
 E = np.zeros((max_rotamers, max_rotamers))
 Hamiltonian = np.zeros((max_rotamers, max_rotamers))

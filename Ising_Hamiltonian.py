@@ -14,10 +14,12 @@ from pyrosetta.rosetta.core.pack.task import TaskFactory
 from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
+from pyrosetta.toolbox import cleanATOM
 
 
 #Initiate structure, scorefunction
-pose = pyrosetta.pose_from_pdb("6Q21_A.pdb")
+cleanATOM("test.pdb")       # struggling to rebuild missing atoms on reisdue, added clean atom
+pose = pyrosetta.pose_from_pdb("test.clean.pdb")
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
 

@@ -137,7 +137,7 @@ for qidx, cidx in meas_map.items():
 qaoa_circuit.decompose()
 qaoa_circuit.draw("mpl")
 
-## Before exercutiom: parameter binding and transpilation
+## Before execution: parameter binding and transpilation
 #how to bind parameters to the circuit and transpile for execution. This is generally done as part of the optimization routine of QAOA.
 param_dict = {gammas[0]: 1, gammas[1]: 1, betas[0]: 0, betas[1]: 1}
 print(qaoa_circuit.parameters)

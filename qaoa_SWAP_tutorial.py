@@ -73,8 +73,6 @@ pm_pre = PassManager(
 swapped_cost_layer = pm_pre.run(cost_layer) #pass manager is applied
 swapped_cost_layer.draw("mpl")
 
-plt.show()
-
 #Build measurement map to recover permutations
 #This steps depends on the number of QAOA layers we want our ansatz to contain 
 
@@ -97,3 +95,62 @@ swapped_cost_layer.remove_final_measurements()
 swapped_cost_layer.parameters
 
 from qiskit.circuit import ParameterVector, Parameter
+
+qaoa_circuit = QuantumCircuit(num_qubits, num_qubits)
+
+#add here initial state, in this case all H
+qaoa_circuit.h(range(num_qubits))
+
+#create a gamma and beta parameter per layer
+gammas = ParameterVector("γ", qaoa_layers)
+betas = ParameterVector("β", qaoa_layers)
+
+#define mixer layer, in this case rx
+mixer_layer = QuantumCircuit(num_qubits)
+mixer_layer.rx(betas[0], range(num_qubits))
+
+#iterate over number of qaoa layers
+for layer in range(qaoa_layers):
+    #assign paramaters corresponding to layer
+    cost = swapped_cost_layer.assign_parameters(
+        {swapped_cost_layer.parameters[0]: gammas[layer]}
+    )
+    mixer = mixer_layer.assign_parameters({mixer_layer.parameters[0]: betas[layer]})
+
+    if layer % 2 == 0:
+        #even layer -> append cost
+        qaoa_circuit.append(cost.reverse_ops(), range(num_qubits))
+    else: 
+        #odd layer -> append reversed cost
+        qaoa_circuit.append(cost.reverse_ops(), range(num_qubits))
+
+    #the mixed layer is not reversed
+    qaoa_circuit.append(mixer, range(num_qubits))
+
+# to seperate the qaoao layers from the measurement part
+qaoa_circuit.barrier()
+
+#iterate over measurement map to recover permutations introduced by swap operations
+for qidx, cidx in meas_map.items():
+    qaoa_circuit.measure(qidx, cidx)
+
+qaoa_circuit.decompose()
+qaoa_circuit.draw("mpl")
+
+## Before exercutiom: parameter binding and transpilation
+#how to bind parameters to the circuit and transpile for execution. This is generally done as part of the optimization routine of QAOA.
+param_dict = {gammas[0]: 1, gammas[1]: 1, betas[0]: 0, betas[1]: 1}
+print(qaoa_circuit.parameters)
+final_circuit = qaoa_circuit.bind_parameters(param_dict)
+
+# optional custom transpilation steps go here (to amtch specific hardware)
+from qiskit import transpile
+
+basis_gates = ["rz", "sx", "x", "cx"]
+#now transpile to sx, rz, x, cx basis
+t_final_circuit = transpile(
+    final_circuit, basis_gates=basis_gates, optimization_level=2
+)
+t_final_circuit.draw("mpl")
+
+plt.show()

@@ -67,7 +67,7 @@ def spin_down():
     return -1
 
 
-#Loop to find Hamiltonian values Jij
+#Loop to find Hamiltonian values Jij - interaction of rotamers on NN residues
 for residue_number in range(1, residue_count):
     rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
     if rotamer_set_i == None: # skip if no rotamers for the residue
@@ -99,7 +99,27 @@ for residue_number in range(1, residue_count):
             print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
-                
+     
+     
+     
+#Loop to find interaction of NN rotamers on the same residue
+for residue_number in range(1, residue_count + 1):
+    residue1 = pose.residue(residue_number)
+    rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
+    if rotamer_set_i == None: 
+        continue
+
+    molten_res_i = rotsets.resid_2_moltenres(residue_number)
+
+    for rot_i in range(1, rotamer_set_i.num_rotamers()):
+        # S1 = spin_up()
+        E[rot_i-1, rot_i] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_i, rot_i, rot_i+1)
+        Hamiltonian[rot_i-1, rot_i] = E[rot_i-1, rot_i]  #*S1*S2
+
+        print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and rotamer {rot_i+1} :", Hamiltonian[rot_i-1, rot_i])
+        data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i+1, 'E_ij': Hamiltonian[rot_i-1, rot_i]}
+        data_list.append(data)
+           
 
 #Loop to find Hamiltonian values Jii
 for residue_number in range(1, residue_count + 1):

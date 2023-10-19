@@ -1,5 +1,6 @@
 ### Now contrsuct the Hamiltonian for our problem using the interaction energies previously calculated
-import pyrosetta; pyrosetta.init()
+import pyrosetta;
+pyrosetta.init()        #extra_options="-ignore_unrecognized_res"
 from pyrosetta.teaching import *
 from pyrosetta import *
 
@@ -15,14 +16,23 @@ from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta.toolbox import cleanATOM
-from scipy.optimize import minimize
 
+# after having converted the pdb file to mol using 'obabel input.pdb -O output.mol' and then generating the params file with 
+#'python /Users/aag/Downloads/rosetta_src_2021.16.61629_bundle/main/source/scripts/python/public/molfile_to_params.py output.mol -n NAMERESIDUE'
 
+# pose = Pose()
+# params_path = Vector1(["MLE.params", "DPN.params", "MOH.params"])
+# non_standard_residue_type = generate_nonstandard_residue_set(pose, params_path)
+# pose = pyrosetta.pose_from_file("test.pdb") 
+# print(pose.sequence())
 #Initiate structure, scorefunction
-cleanATOM("test.pdb")       # struggling to rebuild missing atoms on reisdue, added clean atom
-pose = pyrosetta.pose_from_pdb("test.clean.pdb")
+# cleanATOM("test_1.pdb")       # struggling to rebuild missing atoms on reisdue, added clean atom
+pose = pyrosetta.pose_from_pdb("protonated.pdb")
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
+
+print(residue_count)
+
 
 relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)

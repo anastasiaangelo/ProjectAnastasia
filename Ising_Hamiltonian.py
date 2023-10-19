@@ -15,22 +15,12 @@ from pyrosetta.rosetta.core.pack.task import TaskFactory
 from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
-from pyrosetta.toolbox import cleanATOM
 
-# after having converted the pdb file to mol using 'obabel input.pdb -O output.mol' and then generating the params file with 
-#'python /Users/aag/Downloads/rosetta_src_2021.16.61629_bundle/main/source/scripts/python/public/molfile_to_params.py output.mol -n NAMERESIDUE'
-
-# pose = Pose()
-# params_path = Vector1(["MLE.params", "DPN.params", "MOH.params"])
-# non_standard_residue_type = generate_nonstandard_residue_set(pose, params_path)
-# pose = pyrosetta.pose_from_file("test.pdb") 
-# print(pose.sequence())
 #Initiate structure, scorefunction
-# cleanATOM("test_1.pdb")       # struggling to rebuild missing atoms on reisdue, added clean atom
-pose = pyrosetta.pose_from_pdb("protonated.pdb")
+pose = pyrosetta.pose_from_pdb("test.pdb")
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
-
+print(pose.sequence())
 print(residue_count)
 
 
@@ -107,7 +97,7 @@ for residue_number in range(1, residue_count):
 
     for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
         for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
-            print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
+            # print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
      
@@ -146,7 +136,7 @@ for residue_number in range(1, residue_count + 1):
         E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
         Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]  #*S1
 
-        print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
+        # print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
         data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i, 'E_ij': Hamiltonian[rot_i-1, rot_i-1]}
         data_list.append(data)
     

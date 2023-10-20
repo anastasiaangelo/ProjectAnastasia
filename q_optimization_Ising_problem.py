@@ -1,45 +1,65 @@
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
 import numpy as np
+import pandas as pd
 import csv
 
-## here we will use the classical code to calculate and import the matrix J
-# use sparse representation for memory reasons
-with open('hamiltonian_terms.csv', mode='r') as file:
-    csv_reader = csv.reader(file)
-    data = []
-    for row in csv_reader:
-        complex_row = []
-        for entry in row:
-            try:
-                complex_row.append(complex(entry))
-            except ValueError:
-              print(f"Error converting string {entry} to complex. Please check the CSV.")
-              complex_row.append(0j)  # add a default value; or you can skip this row/entry depending on your needs
-        data.append(complex_row)
-    J = np.array(data)  
+## configure the hamiltonian from the values calculated classically with pyrosetta
+df = pd.read_csv("hamiltonian_terms.csv")
+
+h = df['E_ij'].values[12:]
+num = len(h)
+
+value = df['E_ij'].values[0:12]
+J = np.zeros((num,num))
+n = 0
+print(value)
+
+for i in range(0, num-2):
+    if i%2 == 0:
+        J[i][i+2]=value[n]
+        J[i][i+3]=value[n+1]
+        n += 2
+    elif i%2 != 0:
+        J[i][i+1]=value[n]
+        J[i][i+2]=value[n+1]
+        n += 2
+
+print(J)
+print(h)
+
+## function to construct the ising hamiltonain from the one-body and two-body energies h and J
+def ising_hamiltonian(one_body_energies, two_body_energies):        # we can then add config when we want to introduce the spin variable
+    hamiltonian = 0
+
+    for i in range(1, num):
+        hamiltonian += one_body_energies[i]     # * config[i]
+
+    for i in range(num):
+        for j in range(i+1, num):
+            hamiltonian +=two_body_energies[i][j]           #*config[i]*config[j]
+        
+    return hamiltonian
+
+
+#define a random initial configuration
+initial_config = np.array([1, -1, -1, 1, 1, 1]) 
 
 
 # or build the Pauli representation from the problem may be more efficient rather than converting it
+# too complex though for now
 
 from qiskit import Aer, QuantumCircuit, transpile
 from qiskit.opflow import PauliSumOp, MatrixOp
-from qiskit.algorithms.minimum_eigensolvers import QAOA
+from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator
 from qiskit.algorithms.optimizers import COBYLA
+from qiskit.opflow import PauliSumOp
 
-# Convert MatrixOp to PauliOp
-pauli_op = MatrixOp(J).to_pauli_op()
-# Extract Pauli terms and coefficients from PauliOp
-pauli_terms = [(str(term.primitive), term.coeff) for term in pauli_op]
-# Convert to PauliOp
-hamiltonian = PauliSumOp.from_list(pauli_terms)
-
+hamiltonian = ising_hamiltonian(h, J)       #initial_config
 print(hamiltonian)
 
-
 ## find minimum value using optimisation technique of QAOA
-nqubits = 4
 
-qaoa = QAOA(1,optimizer=COBYLA(), reps=1, mixer=hamiltonian, initial_point=[1.0,1.0])
+qaoa = QAOA(1, optimizer=COBYLA(), reps=1, mixer=hamiltonian, initial_point=[1.0,1.0])
 result = qaoa.compute_minimum_eigenvalue(hamiltonian)
-print(result)
+print("\n\nthe result is", result)

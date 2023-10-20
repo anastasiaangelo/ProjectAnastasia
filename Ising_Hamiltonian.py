@@ -15,6 +15,7 @@ from pyrosetta.rosetta.core.pack.task import TaskFactory
 from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
+from pyrosetta.rosetta.core.pack.task.operation import OperateOnResidueSubset, PreventRepacking
 
 #Initiate structure, scorefunction
 pose = pyrosetta.pose_from_pdb("test.pdb")
@@ -23,13 +24,13 @@ sfxn = get_score_function(True)
 print(pose.sequence())
 print(residue_count)
 
-
 relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)
 relax_protocol.apply(pose)
 
 #Define task, interaction graph and rotamer sets (detailed comments on model_protein_csv.py)
 task_pack = TaskFactory.create_packer_task(pose) 
+
 rotsets = RotamerSets()
 pose.update_residue_neighbors()
 sfxn.setup_for_packing(pose, task_pack.designing_residues(), task_pack.designing_residues())
@@ -88,15 +89,15 @@ for residue_number in range(1, residue_count):
     if not edge_exists:
             continue
     
-    for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
-        for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
+    for rot_i in range(1, 3):        #rotamer_set_i.num_rotamers() + 1):
+        for rot_j in range(1, 3):        #rotamer_set_j.num_rotamers() + 1):
             # S1 = spin_up()
             # S2 = spin_down()
             E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
             Hamiltonian[rot_i-1, rot_j-1] = E[rot_i-1, rot_j-1]  #*S1*S2
 
-    for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
-        for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
+    for rot_i in range(1, 3):       #rotamer_set_i.num_rotamers() + 1):
+        for rot_j in range(1, 3):       #rotamer_set_j.num_rotamers() + 1):
             # print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
@@ -131,7 +132,7 @@ for residue_number in range(1, residue_count + 1):
 
     molten_res_i = rotsets.resid_2_moltenres(residue_number)
     
-    for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
+    for rot_i in range(1, 3):       #rotamer_set_i.num_rotamers() + 1):
         # S1 = spin_up()
         E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
         Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]  #*S1

@@ -56,8 +56,13 @@ print("Maximum number of rotamers:", max_rotamers)
 E = np.zeros((max_rotamers, max_rotamers))
 Hamiltonian = np.zeros((max_rotamers, max_rotamers))
 
-output_file = "hamiltonian_terms.csv"
+E1 = np.zeros((max_rotamers, max_rotamers))
+Hamiltonian1 = np.zeros((max_rotamers, max_rotamers))
+
+output_file1 = "one_body_terms.csv"
+output_file = "two_body_terms.csv"
 data_list = []
+data_list1 = []
 df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
 
 
@@ -102,7 +107,9 @@ for residue_number in range(1, residue_count):
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
      
-     
+
+df = pd.DataFrame(data_list)
+df.to_csv('two_body_terms.csv', index=False)
      
 # #Loop to find interaction of NN rotamers on the same residue --> stupid doesn't make sense, rotamers cant interact which each other since they can't coexist at the same time
 # for residue_number in range(1, residue_count + 1):
@@ -134,16 +141,16 @@ for residue_number in range(1, residue_count + 1):
     
     for rot_i in range(1, 3):       #rotamer_set_i.num_rotamers() + 1):
         # S1 = spin_up()
-        E[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
-        Hamiltonian[rot_i-1, rot_i-1] = E[rot_i-1, rot_i-1]  #*S1
+        E1[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
+        Hamiltonian1[rot_i-1, rot_i-1] = E1[rot_i-1, rot_i-1]  #*S1
 
         # print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
-        data = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i, 'E_ij': Hamiltonian[rot_i-1, rot_i-1]}
-        data_list.append(data)
+        data1 = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i, 'E_ij': Hamiltonian1[rot_i-1, rot_i-1]}
+        data_list1.append(data1)
     
 
 
 #Save the Hamiltonian to a csv file
-df = pd.DataFrame(data_list)
-df.to_csv('hamiltonian_terms.csv', index=False)
+df = pd.DataFrame(data_list1)
+df.to_csv('one_body_terms.csv', index=False)
 

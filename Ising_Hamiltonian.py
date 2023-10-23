@@ -59,11 +59,12 @@ Hamiltonian = np.zeros((max_rotamers, max_rotamers))
 E1 = np.zeros((max_rotamers, max_rotamers))
 Hamiltonian1 = np.zeros((max_rotamers, max_rotamers))
 
-output_file1 = "one_body_terms.csv"
 output_file = "two_body_terms.csv"
+output_file1 = "one_body_terms.csv"
 data_list = []
 data_list1 = []
 df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
+df1 = pd.DataFrame(columns=['res i', 'rot A_i', 'E_ii'])
 
 
 #Spin functions to define Pauli states
@@ -145,12 +146,12 @@ for residue_number in range(1, residue_count + 1):
         Hamiltonian1[rot_i-1, rot_i-1] = E1[rot_i-1, rot_i-1]  #*S1
 
         # print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
-        data1 = {'res i': residue_number, 'res j': residue_number, 'rot A_i': rot_i, 'rot B_j': rot_i, 'E_ij': Hamiltonian1[rot_i-1, rot_i-1]}
+        data1 = {'res i': residue_number, 'rot A_i': rot_i, 'E_ii': Hamiltonian1[rot_i-1, rot_i-1]}
         data_list1.append(data1)
     
 
 
 #Save the Hamiltonian to a csv file
-df = pd.DataFrame(data_list1)
-df.to_csv('one_body_terms.csv', index=False)
+df1 = pd.DataFrame(data_list1)
+df1.to_csv('one_body_terms.csv', index=False)
 

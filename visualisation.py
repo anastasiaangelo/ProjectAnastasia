@@ -1,6 +1,6 @@
 import pyrosetta; pyrosetta.init()
 
-pose = pyrosetta.io.pose_from_pdb("inputs/5tj3.pdb")
+pose = pyrosetta.io.pose_from_pdb("test.pdb")
 
 #creating an instance of PyMOLMover pmm
 from pyrosetta import PyMOLMover

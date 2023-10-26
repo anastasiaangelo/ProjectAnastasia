@@ -8,7 +8,7 @@ import csv
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
 h = df1['E_ii'].values
-# h = np.multiply(0.5,h)       #to convert from QUBO to Ising hamiltonian
+h = np.multiply(0.5,h)       #to convert from QUBO to Ising hamiltonian
 num = len(h)
 
 print(h)
@@ -31,6 +31,7 @@ for i in range(0, num-2):
 
 print(J)
 
+num_qubits = 4
 
 ## function to construct the ising hamiltonain from the one-body and two-body energies h and J
 def ising_hamiltonian(config, one_body_energies, two_body_energies):
@@ -75,18 +76,18 @@ from qiskit.quantum_info.operators import Operator
 from qiskit.algorithms.optimizers import COBYLA
 from qiskit.opflow import PauliSumOp
 
-def Z_op(qubit, num):
+def Z_op(qubit, num_qubits):
     """Return a Z Pauli operator on the specified qubit in a num-qubit system."""
-    op_list = [I for _ in range(num)]
+    op_list = [I for _ in range(num_qubits)]
     op_list[qubit] = Z
     op = op_list[0]
     for current_op in op_list[1:]:
         op = op @ current_op
     return op
 
-def X_op(qubit, num):
+def X_op(qubit, num_qubits):
     """Return an X Pauli operator on the specified qubit in a num-qubit system."""
-    op_list = [I for _ in range(num)]
+    op_list = [I for _ in range(num_qubits)]
     op_list[qubit] = X
     op = op_list[0]
     for current_op in op_list[1:]:
@@ -95,16 +96,16 @@ def X_op(qubit, num):
 
 def ising_to_pauli_op(h, J):
     num = len(h)
-    op = sum(h[i] * Z_op(i, num) for i in range(num))
-    for i in range(num):
-        for j in range(i+1, num):
-            op += J[i][j] * Z_op(i, num) @ Z_op(j, num)
+    op = sum(h[i] * Z_op(i, num_qubits) for i in range(num_qubits))
+    for i in range(num_qubits):
+        for j in range(i+1, num_qubits):
+            op += J[i][j] * Z_op(i, num_qubits) @ Z_op(j, num_qubits)
     return op
 
 hamiltonian_op = ising_to_pauli_op(h, J)
 
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
-mixer_op = sum(X_op(i,num) for i in range(num))
+mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 
 hamiltonian = ising_hamiltonian(initial_config, h, J)  
 

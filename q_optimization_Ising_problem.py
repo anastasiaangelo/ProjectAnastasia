@@ -8,6 +8,7 @@ import csv
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
 h = df1['E_ii'].values
+# h = np.multiply(0.5,h)       #to convert from QUBO to Ising hamiltonian
 num = len(h)
 
 print(h)
@@ -20,12 +21,12 @@ print(value)
 
 for i in range(0, num-2):
     if i%2 == 0:
-        J[i][i+2]=value[n]
-        J[i][i+3]=value[n+1]
+        J[i][i+2]=0.5*value[n]
+        J[i][i+3]=0.5*value[n+1]
         n += 2
     elif i%2 != 0:
-        J[i][i+1]=value[n]
-        J[i][i+2]=value[n+1]
+        J[i][i+1]=0.5*value[n]
+        J[i][i+2]=0.5*value[n+1]
         n += 2
 
 print(J)

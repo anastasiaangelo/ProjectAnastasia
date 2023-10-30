@@ -37,6 +37,20 @@ for i in range(0, num):
 
 print(f"\nMatrix of all pairwise interaction energies: \n", J)
 
+# add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue
+# implementation of the Hammings constraint
+def add_penalty_term(J, penalty_constant, residue_pairs):
+    for i, j in residue_pairs:
+        J[i][j] += penalty_constant
+        
+    return J
+
+
+P =3000
+residue_pairs = [(0,1), (2,3), (4,5), (6,7)]
+
+J = add_penalty_term(J, P, residue_pairs)
+
 ## Classical optimisation:
 # function to construct the ising hamiltonain from the one-body and two-body energies h and J
 def ising_hamiltonian(config, one_body_energies, two_body_energies):
@@ -81,7 +95,7 @@ from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
 
-num_qubits = 4
+num_qubits = num
 
 def X_op(i, num_qubits):
     """Return an X Pauli operator on the specified qubit in a num-qubit system."""
@@ -125,6 +139,9 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 
-qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=2, mixer=mixer_op, initial_point=[1.0,1.0,1.0,1.0])
+
+p = 10  # Number of QAOA layers
+initial_point = np.ones(2 * p)
+qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n", result)

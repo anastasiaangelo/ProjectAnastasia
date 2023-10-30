@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 import csv
+import matplotlib.pyplot as plt
 
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")

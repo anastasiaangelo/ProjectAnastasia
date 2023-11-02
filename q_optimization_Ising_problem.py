@@ -32,16 +32,17 @@ for i in range(0, num-2):
 
 print(f"\nTwo body energy values: \n", J)
 
+M = J
 for i in range(0, num):
-    J[i][i] = h[i]
+    M[i][i] = h[i]
 
-print(f"\nMatrix of all pairwise interaction energies: \n", J)
+print(f"\nMatrix of all pairwise interaction energies: \n", M)
 
 # add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue
 # implementation of the Hammings constraint
-def add_penalty_term(J, penalty_constant, residue_pairs):
+def add_penalty_term(M, penalty_constant, residue_pairs):
     for i, j in residue_pairs:
-        J[i][j] += penalty_constant
+        M[i][j] += penalty_constant
         
     return J
 
@@ -49,7 +50,7 @@ def add_penalty_term(J, penalty_constant, residue_pairs):
 P = 10
 residue_pairs = [(0,1), (2,3), (4,5), (6,7)]
 
-J = add_penalty_term(J, P, residue_pairs)
+M = add_penalty_term(M, P, residue_pairs)
 
 ## Classical optimisation:
 # # function to construct the ising hamiltonain from the one-body and two-body energies h and J
@@ -65,6 +66,7 @@ J = add_penalty_term(J, P, residue_pairs)
         
 #     return hamiltonian
 
+## constructing Ising as outlined in Ben's pdf
 def ising_hamiltonian(config, one_body_energies, two_body_energies):
     hamiltonian = 0
 
@@ -140,7 +142,7 @@ for i in range(0, num_qubits):
     for j in range(0, num_qubits):
         if J[i][j] != 0:
             pauli = generate_pauli_zij(num_qubits, i, j)
-            op = SparsePauliOp(pauli, coeffs=[J[i][j]])
+            op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             hamiltonian_terms.append(op) 
 
 hamiltonian = sum(hamiltonian_terms, SparsePauliOp(Pauli('I'*num_qubits)))

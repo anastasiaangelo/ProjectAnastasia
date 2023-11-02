@@ -46,22 +46,42 @@ def add_penalty_term(J, penalty_constant, residue_pairs):
     return J
 
 
-P =3000
+P = 10
 residue_pairs = [(0,1), (2,3), (4,5), (6,7)]
 
 J = add_penalty_term(J, P, residue_pairs)
 
 ## Classical optimisation:
-# function to construct the ising hamiltonain from the one-body and two-body energies h and J
+# # function to construct the ising hamiltonain from the one-body and two-body energies h and J
+# def ising_hamiltonian(config, one_body_energies, two_body_energies):
+#     hamiltonian = 0
+
+#     for i in range(1, num):
+#         hamiltonian += one_body_energies[i] * config[i]
+
+#     for i in range(num):
+#         for j in range(i+1, num):
+#             hamiltonian +=two_body_energies[i][j] * config[i]*config[j]
+        
+#     return hamiltonian
+
 def ising_hamiltonian(config, one_body_energies, two_body_energies):
     hamiltonian = 0
 
-    for i in range(1, num):
-        hamiltonian += one_body_energies[i] * config[i]
+    for j in range(num):
+        for i in range(j+1, num):
+            hamiltonian += two_body_energies[i][j] * config[i] * config[j] 
+    
+    for i in range(num):
+        for j in range(num):
+            hamiltonian -= two_body_energies[i][j] * config[i]
 
     for i in range(num):
-        for j in range(i+1, num):
-            hamiltonian +=two_body_energies[i][j] * config[i]*config[j]
+        for j in range(num):
+             hamiltonian += two_body_energies[i][j]*0.5
+    
+    for i in range(num):
+        hamiltonian += one_body_energies[i]*0.5
         
     return hamiltonian
 
@@ -145,3 +165,12 @@ initial_point = np.ones(2 * p)
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n", result)
+
+k = 0
+for i in range(1, num):
+    k += h[i]/2
+for i in range(num):
+        for j in range(i+1, num):
+            k += J[i][j]/2
+
+print(k)

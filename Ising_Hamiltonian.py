@@ -1,4 +1,4 @@
-### Now contrsuct the Hamiltonian for our problem using the interaction energies previously calculated
+### Take input pdb, score, repack and extract one and two body energies
 import pyrosetta;
 pyrosetta.init()
 from pyrosetta.teaching import *
@@ -15,11 +15,11 @@ from pyrosetta.rosetta.core.pack.task import TaskFactory
 from pyrosetta.rosetta.core.pack.rotamer_set import *
 from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactory
 from pyrosetta.rosetta.core.pack.task import *
-from pyrosetta.rosetta.core.pack.task.operation import OperateOnResidueSubset, PreventRepacking
 from pyrosetta import PyMOLMover
 
-#Initiate structure, scorefunction
+# Initiate structure, scorefunction
 pose = pyrosetta.pose_from_pdb("protonated.pdb")
+
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
 print(pose.sequence())
@@ -29,7 +29,7 @@ relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)
 relax_protocol.apply(pose)
 
-#Define task, interaction graph and rotamer sets (detailed comments on model_protein_csv.py)
+# Define task, interaction graph and rotamer sets (model_protein_csv.py)
 task_pack = TaskFactory.create_packer_task(pose) 
 
 rotsets = RotamerSets()
@@ -43,10 +43,10 @@ ig = InteractionGraphFactory.create_interaction_graph(task_pack, rotsets, pose, 
 print("built", rotsets.nrotamers(), "rotamers at", rotsets.nmoltenres(), "positions.")
 rotsets.compute_energies(pose, sfxn, packer_neighbor_graph, ig, 1)
 
-#output structure to be visualised in pymol
+# Output structure to be visualised in pymol
 pose.dump_pdb("output_repacked.pdb")
 
-#Define dimension for matrix
+# Define dimension for matrix
 max_rotamers = 0
 for residue_number in range(1, residue_count+1):
     n_rots = rotsets.nrotamers_for_moltenres(residue_number)
@@ -71,26 +71,19 @@ df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
 df1 = pd.DataFrame(columns=['res i', 'rot A_i', 'E_ii'])
 
 
-#visualisation of structure after repacking with rotamers
-pmm = PyMOLMover()
-clone_pose = Pose()
-clone_pose.assign(pose)
-pmm.apply(clone_pose)
-pmm.send_hbonds(clone_pose)
-pmm.keep_history(True)
-pmm.apply(clone_pose)
+# # Visualisation of structure after repacking with rotamers
+# pmm = PyMOLMover()
+# clone_pose = Pose()
+# clone_pose.assign(pose)
+# pmm.apply(clone_pose)
+# pmm.send_hbonds(clone_pose)
+# pmm.keep_history(True)
+# pmm.apply(clone_pose)
 
-#Spin functions to define Pauli states
-def spin_up():
-    return +1
-
-def spin_down():
-    return -1
-
-#to limit to first 2 rotamers per residue
+# to limit to 2 rotamers per residue
 num = 3
 
-#Loop to find Hamiltonian values Jij - interaction of rotamers on NN residues
+# Loop to find Hamiltonian values Jij - interaction of rotamers on NN residues
 for residue_number in range(1, residue_count):
     rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
     if rotamer_set_i == None: # skip if no rotamers for the residue
@@ -112,30 +105,25 @@ for residue_number in range(1, residue_count):
     
     for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
         for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
-            # S1 = spin_up()
-            # S2 = spin_down()
             E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
-            # energy cutoff, leave for now
-            # if E[rot_i-1, rot_j-1] > 3:
-            #     continue
-            Hamiltonian[rot_i-1, rot_j-1] = E[rot_i-1, rot_j-1]  #*S1*S2
+            Hamiltonian[rot_i-1, rot_j-1] = E[rot_i-1, rot_j-1]
 
-    for rot_i in range(1, num):     #rotamer_set_i.num_rotamers() + 1):
-        for rot_j in range(1, num):     #rotamer_set_j.num_rotamers() + 1):
+    for rot_i in range(10, num+9):     #rotamer_set_i.num_rotamers() + 1):
+        for rot_j in range(10, num+9):     #rotamer_set_j.num_rotamers() + 1):
             # print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
      
 
-#Save the two-body energies to a csv file
+# Save the two-body energies to a csv file
 df = pd.DataFrame(data_list)
-# all vlaues
 df.to_csv('two_body_terms.csv', index=False)
+
 # to choose the two rotamers with the largest energy in absolute value
 # df.assign(abs_E=df['E_ij'].abs()).nlargest(2, 'abs_E').drop(columns=['abs_E']).to_csv('two_body_terms.csv', index=False)
 
 
-#Loop to find Hamiltonian values Jii
+# Loop to find Hamiltonian values Jii
 for residue_number in range(1, residue_count + 1):
     residue1 = pose.residue(residue_number)
     rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
@@ -143,23 +131,18 @@ for residue_number in range(1, residue_count + 1):
         continue
 
     molten_res_i = rotsets.resid_2_moltenres(residue_number)
-    
-    for rot_i in range(1, num):         #rotamer_set_i.num_rotamers() + 1):
-        # S1 = spin_up()
-        E1[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
-        # if E[rot_i-1, rot_i-1] > 5:
-        #     continue
-        Hamiltonian1[rot_i-1, rot_i-1] = E1[rot_i-1, rot_i-1]  #*S1
 
+    for rot_i in range(10, num+9):         #rotamer_set_i.num_rotamers() + 1):
+        E1[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
+        Hamiltonian1[rot_i-1, rot_i-1] = E1[rot_i-1, rot_i-1]
         # print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")
         data1 = {'res i': residue_number, 'rot A_i': rot_i, 'E_ii': Hamiltonian1[rot_i-1, rot_i-1]}
         data_list1.append(data1)
     
 
 
-#Save the one-body energies to a csv file
+# Save the one-body energies to a csv file
 df1 = pd.DataFrame(data_list1)
-# all vlaues
 df1.to_csv('one_body_terms.csv', index=False)
 # to choose the two rotamers with the largest energy in absolute value
 # df1.assign(abs_Ei=df1['E_ii'].abs()).nlargest(2, 'abs_Ei').drop(columns=['abs_Ei']).to_csv('one_body_terms.csv', index=False)

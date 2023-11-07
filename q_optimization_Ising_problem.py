@@ -9,69 +9,54 @@ import matplotlib.pyplot as plt
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
 h = df1['E_ii'].values
-h = np.multiply(0.5,h)       #to convert from QUBO to Ising hamiltonian
+h = np.multiply(0.5, h)       #to convert from QUBO to Ising hamiltonian
 num = len(h)
 
 print(f"\nOne body energy values: \n", h)
 
 df = pd.read_csv("two_body_terms.csv")
 value = df['E_ij'].values
-value = np.multiply(0.5, value)
 J = np.zeros((num,num))
 n = 0
 
 for i in range(0, num-2):
     if i%2 == 0:
-        J[i][i+2]=0.5*value[n]
-        J[i][i+3]=0.5*value[n+1]
+        J[i][i+2] = 0.25 * value[n]
+        J[i][i+3] = 0.25 * value[n+1]
         n += 2
     elif i%2 != 0:
-        J[i][i+1]=0.5*value[n]
-        J[i][i+2]=0.5*value[n+1]
+        J[i][i+1] = 0.25 * value[n]
+        J[i][i+2] = 0.25 * value[n+1]
         n += 2
 
 print(f"\nTwo body energy values: \n", J)
 
-M = J
+H = J
 for i in range(0, num):
-    M[i][i] = h[i]
+    H[i][i] = h[i]
 
-print(f"\nMatrix of all pairwise interaction energies: \n", M)
+print(f"\nMatrix of all pairwise interaction energies: \n", H)
 
-# add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue
-# implementation of the Hammings constraint
+
+# add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
 def add_penalty_term(M, penalty_constant, residue_pairs):
     for i, j in residue_pairs:
         M[i][j] += penalty_constant
         
-    return J
-
+    return M
 
 P = 10
-residue_pairs = [(0,1), (2,3), (4,5), (6,7)]
+residue_pairs = [(0,1), (2,3), (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
 
-M = add_penalty_term(M, P, residue_pairs)
+M = add_penalty_term(H, P, residue_pairs)
 
-## Classical optimisation:
-# # function to construct the ising hamiltonain from the one-body and two-body energies h and J
-# def ising_hamiltonian(config, one_body_energies, two_body_energies):
-#     hamiltonian = 0
-
-#     for i in range(1, num):
-#         hamiltonian += one_body_energies[i] * config[i]
-
-#     for i in range(num):
-#         for j in range(i+1, num):
-#             hamiltonian +=two_body_energies[i][j] * config[i]*config[j]
-        
-#     return hamiltonian
-
-## constructing Ising as outlined in Ben's pdf
+# constructing Ising as outlined in Ben's pdf
 def ising_hamiltonian(config, one_body_energies, two_body_energies):
     hamiltonian = 0
+    num = len(one_body_energies)
 
-    for j in range(num):
-        for i in range(j+1, num):
+    for i in range(num):
+        for j in range(i+1, num):
             hamiltonian += two_body_energies[i][j] * config[i] * config[j] 
     
     for i in range(num):
@@ -80,33 +65,33 @@ def ising_hamiltonian(config, one_body_energies, two_body_energies):
 
     for i in range(num):
         for j in range(num):
-             hamiltonian += two_body_energies[i][j]*0.5
-    
+            hamiltonian -= two_body_energies[i][j] * config[j]
+
     for i in range(num):
-        hamiltonian += one_body_energies[i]*0.5
+        hamiltonian -= one_body_energies[i] * config[i]
+
+    # for i in range(num):
+    #     for j in range(num):
+    #          hamiltonian += two_body_energies[i][j]
+    
+    # for i in range(num):
+    #     hamiltonian += one_body_energies[i]
         
     return hamiltonian
+
+
 
 # define a random initial configuration
 initial_config = np.random.choice([-1, 1], size=num)
 
-# energy function to be minimised
-def energy_function(config):
-    return ising_hamiltonian(config, h, J)   
+## Classical optimisation:
+from scipy.sparse.linalg import eigsh
 
-## First we will diagonalise classically and then compare the result with the qaoa
-# Define the optimization function to minimize the Ising Hamiltonian
-from scipy.optimize import minimize
-result = minimize(energy_function, initial_config, method='COBYLA')
-
-# Extract the ground state configuration and energy
-ground_state_config = result.x
-ground_state_energy = result.fun
+eigenvalues, eigenvectors = eigsh(M, k=num, which='SA')
 
 print("\n\nClassical optimisation results. \n")
-print("Ground state energy: ", ground_state_energy)
-print("Ground state wavefunction: ", ground_state_config)
-
+print("Ground energy eigsh: ", eigenvalues[0])
+print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 
 
 ## Quantum optimisation
@@ -131,21 +116,26 @@ def generate_pauli_zij(n, i, j):
         raise ValueError(f"Indices out of bounds for n={n} qubits. ")
    
     pauli_str = ['I']*n
-    pauli_str[i] = 'Z'
-    pauli_str[j] = 'Z'
+
+    if i ==j:
+        pauli_str[i] = 'Z'
+    else:
+        pauli_str[i] = 'Z'
+        pauli_str[j] = 'Z'
 
     return Pauli(''.join(pauli_str))
 
 hamiltonian_terms = []
 
-for i in range(0, num_qubits):
-    for j in range(0, num_qubits):
-        if J[i][j] != 0:
+for i in range(num_qubits):
+    for j in range(num_qubits):
+        if M[i][j] != 0:
             pauli = generate_pauli_zij(num_qubits, i, j)
             op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             hamiltonian_terms.append(op) 
 
-hamiltonian = sum(hamiltonian_terms, SparsePauliOp(Pauli('I'*num_qubits)))
+zero_op = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
+q_hamiltonian = sum(hamiltonian_terms, zero_op)
 
 def format_sparsepauliop(op):
     terms = []
@@ -155,7 +145,7 @@ def format_sparsepauliop(op):
         terms.append(f"{coeff:.10f} * {label}")
     return '\n'.join(terms)
 
-print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(hamiltonian))
+print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
 
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
@@ -165,14 +155,18 @@ mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 p = 10  # Number of QAOA layers
 initial_point = np.ones(2 * p)
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result = qaoa.compute_minimum_eigenvalue(hamiltonian)
-print("\n\nThe result of the quantum optimisation using QAOA is: \n", result)
+result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
+print("\n\nThe result of the quantum optimisation using QAOA is: \n")
+print('eigenvalue: ', result.eigenvalue)
+print('best measurement', result.best_measurement)
+print(result)
 
 k = 0
-for i in range(1, num):
-    k += h[i]/2
 for i in range(num):
-        for j in range(i+1, num):
-            k += J[i][j]/2
+    k += h[i]
+for i in range(num):
+    k += 0.25 * value[i]
 
 print(k)
+
+print('Ground state energy quantum: ', result.eigenvalue + k)

@@ -45,7 +45,7 @@ def add_penalty_term(M, penalty_constant, residue_pairs):
         
     return M
 
-P = 10
+P = 3
 residue_pairs = [(0,1), (2,3), (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
 
 M = add_penalty_term(H, P, residue_pairs)
@@ -117,7 +117,7 @@ def generate_pauli_zij(n, i, j):
    
     pauli_str = ['I']*n
 
-    if i ==j:
+    if i == j:
         pauli_str[i] = 'Z'
     else:
         pauli_str[i] = 'Z'
@@ -125,17 +125,21 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
-hamiltonian_terms = []
+
+q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
-    for j in range(num_qubits):
+    for j in range(i+1, num_qubits):
         if M[i][j] != 0:
             pauli = generate_pauli_zij(num_qubits, i, j)
             op = SparsePauliOp(pauli, coeffs=[M[i][j]])
-            hamiltonian_terms.append(op) 
+            q_hamiltonian += op
 
-zero_op = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
-q_hamiltonian = sum(hamiltonian_terms, zero_op)
+
+
+for i in range(num_qubits):
+    Z_i = SparsePauliOp(Pauli('I'*i + 'Z' + 'I'*(num_qubits-i-1)), coeffs=[-h[i]])
+    q_hamiltonian += Z_i
 
 def format_sparsepauliop(op):
     terms = []

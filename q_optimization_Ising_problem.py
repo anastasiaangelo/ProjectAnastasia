@@ -129,17 +129,15 @@ def generate_pauli_zij(n, i, j):
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
+    for j in range(num_qubits):
         if M[i][j] != 0:
             pauli = generate_pauli_zij(num_qubits, i, j)
             op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             q_hamiltonian += op
 
-
-
-for i in range(num_qubits):
-    Z_i = SparsePauliOp(Pauli('I'*i + 'Z' + 'I'*(num_qubits-i-1)), coeffs=[-h[i]])
-    q_hamiltonian += Z_i
+# for i in range(num_qubits):
+#     Z_i = SparsePauliOp(Pauli('I'*i + 'Z' + 'I'*(num_qubits-i-1)), coeffs=[-M[i][i]])
+#     q_hamiltonian += Z_i
 
 def format_sparsepauliop(op):
     terms = []
@@ -161,7 +159,7 @@ initial_point = np.ones(2 * p)
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
-print('eigenvalue: ', result.eigenvalue)
+print('eigenvalue: ', result.eigenvalue.real)
 print('best measurement', result.best_measurement)
 print(result)
 
@@ -173,4 +171,21 @@ for i in range(num):
 
 print(k)
 
-print('Ground state energy quantum: ', result.eigenvalue + k)
+print('Ground state energy quantum: ', result.eigenvalue.real + k)
+
+# alternative ground state energy calculation
+bitstring = result.best_measurement['bitstring']
+spins = [1 if bit == '0' else -1 for bit in bitstring]
+
+energy = 0
+
+for i in range(num_qubits):
+    energy += h[i] * spins[i]
+
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        if J[i][j] != 0:
+            energy += J[i][j] * spins[i] * spins[j]
+
+
+print(f"The energy for bitstring {bitstring} is: {energy}")

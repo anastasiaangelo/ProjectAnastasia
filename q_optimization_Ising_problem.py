@@ -5,33 +5,39 @@ import numpy as np
 import pandas as pd
 import csv
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
-h = df1['E_ii'].values
-h = np.multiply(0.5, h)       #to convert from QUBO to Ising hamiltonian
+q = df1['E_ii'].values
+h = np.multiply(0.5, q)       #to convert from QUBO to Ising hamiltonian
 num = len(h)
 
+print('Qii values: \n', q)
 print(f"\nOne body energy values: \n", h)
 
 df = pd.read_csv("two_body_terms.csv")
 value = df['E_ij'].values
-J = np.zeros((num,num))
+Q = np.zeros((num,num))
 n = 0
 
 for i in range(0, num-2):
     if i%2 == 0:
-        J[i][i+2] = 0.25 * value[n]
-        J[i][i+3] = 0.25 * value[n+1]
+        Q[i][i+2] = value[n]
+        Q[i][i+3] = value[n+1]
         n += 2
     elif i%2 != 0:
-        J[i][i+1] = 0.25 * value[n]
-        J[i][i+2] = 0.25 * value[n+1]
+        Q[i][i+1] = value[n]
+        Q[i][i+2] = value[n+1]
         n += 2
+
+print('Qij values: \n', Q)
+
+J = np.multiply(0.25, Q)
 
 print(f"\nTwo body energy values: \n", J)
 
-H = J
+H = deepcopy(J)
 for i in range(0, num):
     H[i][i] = h[i]
 
@@ -50,39 +56,6 @@ residue_pairs = [(0,1), (2,3), (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
 
 M = add_penalty_term(H, P, residue_pairs)
 
-# constructing Ising as outlined in Ben's pdf
-def ising_hamiltonian(config, one_body_energies, two_body_energies):
-    hamiltonian = 0
-    num = len(one_body_energies)
-
-    for i in range(num):
-        for j in range(i+1, num):
-            hamiltonian += two_body_energies[i][j] * config[i] * config[j] 
-    
-    for i in range(num):
-        for j in range(num):
-            hamiltonian -= two_body_energies[i][j] * config[i]
-
-    for i in range(num):
-        for j in range(num):
-            hamiltonian -= two_body_energies[i][j] * config[j]
-
-    for i in range(num):
-        hamiltonian -= one_body_energies[i] * config[i]
-
-    # for i in range(num):
-    #     for j in range(num):
-    #          hamiltonian += two_body_energies[i][j]
-    
-    # for i in range(num):
-    #     hamiltonian += one_body_energies[i]
-        
-    return hamiltonian
-
-
-
-# define a random initial configuration
-initial_config = np.random.choice([-1, 1], size=num)
 
 ## Classical optimisation:
 from scipy.sparse.linalg import eigsh
@@ -135,9 +108,9 @@ for i in range(num_qubits):
             op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             q_hamiltonian += op
 
-# for i in range(num_qubits):
-#     Z_i = SparsePauliOp(Pauli('I'*i + 'Z' + 'I'*(num_qubits-i-1)), coeffs=[-M[i][i]])
-#     q_hamiltonian += Z_i
+for i in range(num_qubits):
+    Z_i = SparsePauliOp(Pauli('I'*i + 'Z' + 'I'*(num_qubits-i-1)), coeffs=[-M[i][i]])
+    q_hamiltonian += Z_i
 
 def format_sparsepauliop(op):
     terms = []
@@ -159,21 +132,18 @@ initial_point = np.ones(2 * p)
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
-print('eigenvalue: ', result.eigenvalue.real)
 print('best measurement', result.best_measurement)
-print(result)
 
 k = 0
-for i in range(num):
+for i in range(num_qubits):
     k += h[i]
-for i in range(num):
-    k += 0.25 * value[i]
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        k += J[i][j]
+ 
+print('k: ', k)
 
-print(k)
-
-print('Ground state energy quantum: ', result.eigenvalue.real + k)
-
-# alternative ground state energy calculation
+# alternative ground state energy calculation wiht h and J
 bitstring = result.best_measurement['bitstring']
 spins = [1 if bit == '0' else -1 for bit in bitstring]
 
@@ -186,6 +156,23 @@ for i in range(num_qubits):
     for j in range(i+1, num_qubits):
         if J[i][j] != 0:
             energy += J[i][j] * spins[i] * spins[j]
+            
+print(f"The energy for bitstring {bitstring} with J is: {energy}")
+print('Energy + constant term: ', energy + k)
 
+# with Q
+bits = [0 if bit == '0' else 1 for bit in bitstring]
 
-print(f"The energy for bitstring {bitstring} is: {energy}")
+en = 0
+
+for i in range(num_qubits):
+    en += q[i] * bits[i]
+
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        if Q[i][j] != 0:
+            en += Q[i][j] * bits[i] * bits[j]
+
+print(f"The energy for bitstring {bitstring} with Q is: {en}")
+print('Energy plus constant term: ', en + k)
+

@@ -23,12 +23,12 @@ n = 0
 
 for i in range(0, num-2):
     if i%2 == 0:
-        Q[i][i+2] = value[n]
-        Q[i][i+3] = value[n+1]
+        Q[i][i+2] = deepcopy(value[n])
+        Q[i][i+3] = deepcopy(value[n+1])
         n += 2
     elif i%2 != 0:
-        Q[i][i+1] = value[n]
-        Q[i][i+2] = value[n+1]
+        Q[i][i+1] = deepcopy(value[n])
+        Q[i][i+2] = deepcopy(value[n+1])
         n += 2
 
 print('Qij values: \n', Q)
@@ -39,7 +39,7 @@ print(f"\nTwo body energy values: \n", J)
 
 H = deepcopy(J)
 for i in range(0, num):
-    H[i][i] = h[i]
+    H[i][i] = deepcopy(h[i])
 
 print(f"\nMatrix of all pairwise interaction energies: \n", H)
 
@@ -133,6 +133,7 @@ qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initi
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+print('eigenvalue: ', result._eigenvalue.real)
 
 k = 0
 for i in range(num_qubits):
@@ -143,25 +144,34 @@ for i in range(num_qubits):
  
 print('k: ', k)
 
-# alternative ground state energy calculation wiht h and J
+# alternative ground state energy calculation with h and J
 bitstring = result.best_measurement['bitstring']
-spins = [1 if bit == '0' else -1 for bit in bitstring]
+spins = [-1 if bit == '0' else 1 for bit in bitstring]
 
 energy = 0
-
-for i in range(num_qubits):
-    energy += h[i] * spins[i]
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
         if J[i][j] != 0:
             energy += J[i][j] * spins[i] * spins[j]
-            
-print(f"The energy for bitstring {bitstring} with J is: {energy}")
-print('Energy + constant term: ', energy + k)
+
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        if J[i][j] != 0:
+            energy -= J[i][j] * spins[i]
+
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        if J[i][j] != 0:
+            energy -= J[i][j] * spins[j]
+        
+for i in range(num_qubits):
+    energy -= h[i] * spins[i]
+
+print(f"The energy for bitstring {bitstring} with J is: {energy + k}")
 
 # with Q
-bits = [0 if bit == '0' else 1 for bit in bitstring]
+bits = [1 if bit == '0' else 0 for bit in bitstring]
 
 en = 0
 
@@ -174,5 +184,3 @@ for i in range(num_qubits):
             en += Q[i][j] * bits[i] * bits[j]
 
 print(f"The energy for bitstring {bitstring} with Q is: {en}")
-print('Energy plus constant term: ', en + k)
-

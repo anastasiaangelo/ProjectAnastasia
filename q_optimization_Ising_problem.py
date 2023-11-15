@@ -57,7 +57,7 @@ P = 3
 pairs = [(0,1), (2,3)]       #, (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
 
 M = deepcopy(H)
-M = add_penalty_term(M, P, pairs)       #matrix for qaoa
+M = add_penalty_term(M, P, pairs)
 
 ## Classical optimisation:
 from scipy.sparse.linalg import eigsh
@@ -103,12 +103,7 @@ def create_hamiltonian(pairs, P, num_qubits):
 
     return H_pen
 
-# ZZII = np.kron(np.kron(np.kron(Z_matrix, Z_matrix), identity), identity)
-# IIZZ = np.kron(np.kron(np.kron(identity, identity), Z_matrix), Z_matrix)
-# H_penalty = P * (ZZII + IIZZ)
-
 H_penalty = create_hamiltonian(pairs, P, num_qubits)
-
 H_tot = C + H_penalty
 
 # Extract the ground state energy and wavefunction
@@ -132,7 +127,6 @@ def X_op(i, num_qubits):
     op_list = ['I'] * num_qubits
     op_list[i] = 'X'
     return SparsePauliOp(Pauli(''.join(op_list)))
-
 
 def generate_pauli_zij(n, i, j):
     if i<0 or i >= n or j<0 or j>=n:
@@ -173,7 +167,6 @@ def format_sparsepauliop(op):
 
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
-
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 
@@ -185,8 +178,8 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
 print(result)
 
-k = 0
 
+k = 0
 for i in range(num_qubits):
     k += 0.5 * q[i]
 
@@ -195,7 +188,9 @@ for i in range(num_qubits):
         if i != j:
             k += 0.5 * 0.25 * Q[i][j]
 
-print('eigenvalue: ', np.real(result.best_measurement['value']) + 2*P + k)
+print('The ground state energy classically is: ', eigenvalues[0]+2*P+k)
+
+print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value']) + 2*P + k)
 
 # alternative ground state energy calculation with Ising model
 bitstring = result.best_measurement['bitstring']
@@ -210,7 +205,7 @@ for i in range(num_qubits):
 for i in range(num_qubits):
     energy +=  H[i][i] * spins[i]
 
-print(f"The energy for bitstring {bitstring} with J is: {energy + k}")
+print(f"The energy for bitstring {bitstring} with Ising model is: {energy + k}")
 
 # with QUBO model
 bits = [0 if bit == '0' else 1 for bit in bitstring]
@@ -226,6 +221,4 @@ for i in range(num_qubits):
             if i != j:
                 en += 0.5 * Q[i][j] * bits[i] * bits[j]
 
-print(f"The energy for bitstring {bitstring} with Q is: {en}")
-
-print('g.s energy: ', eigenvalues[0]+2*P+k)
+print(f"The energy for bitstring {bitstring} with QUBO model is: {en}")

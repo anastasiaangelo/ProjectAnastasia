@@ -10,11 +10,9 @@ from copy import deepcopy
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
 q = df1['E_ii'].values
-h = np.multiply(0.5, q)       #to convert from QUBO to Ising hamiltonian
-num = len(h)
+num = len(q)
 
 print('Qii values: \n', q)
-print(f"\nOne body energy values: \n", h)
 
 df = pd.read_csv("two_body_terms.csv")
 value = df['E_ij'].values
@@ -24,24 +22,29 @@ n = 0
 for i in range(0, num-2):
     if i%2 == 0:
         Q[i][i+2] = deepcopy(value[n])
+        Q[i+2][i] = deepcopy(value[n])
         Q[i][i+3] = deepcopy(value[n+1])
+        Q[i+3][i] = deepcopy(value[n+1])
         n += 2
     elif i%2 != 0:
         Q[i][i+1] = deepcopy(value[n])
+        Q[i+1][i] = deepcopy(value[n])
         Q[i][i+2] = deepcopy(value[n+1])
+        Q[i+2][i] = deepcopy(value[n+1])
         n += 2
 
-print('Qij values: \n', Q)
+print('\nQij values: \n', Q)
 
-J = np.multiply(0.25, Q)
+H = np.zeros((num,num))
 
-print(f"\nTwo body energy values: \n", J)
+for i in range(num):
+    for j in range(i+1, num):
+        H[i][j] = np.multiply(0.25, Q[i][j])
 
-H = deepcopy(J)
-for i in range(0, num):
-    H[i][i] = deepcopy(h[i])
+for i in range(num):
+    H[i][i] = -0.5 * q[i] - sum(0.5 * Q[i][j] for j in range(num) if i != j)
 
-print(f"\nMatrix of all pairwise interaction energies: \n", H)
+print('\nH: \n', H)
 
 
 # add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
@@ -52,10 +55,10 @@ def add_penalty_term(M, penalty_constant, residue_pairs):
     return M
 
 P = 3
-residue_pairs = [(0,1), (2,3), (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
+residue_pairs = [(0,1), (2,3)]       #, (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
 
-M = add_penalty_term(H, P, residue_pairs)
-
+M = deepcopy(H)
+M = add_penalty_term(M, P, residue_pairs)
 
 ## Classical optimisation:
 from scipy.sparse.linalg import eigsh
@@ -102,14 +105,15 @@ def generate_pauli_zij(n, i, j):
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
-    for j in range(num_qubits):
+    for j in range(i+1, num_qubits):
         if M[i][j] != 0:
             pauli = generate_pauli_zij(num_qubits, i, j)
             op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             q_hamiltonian += op
 
 for i in range(num_qubits):
-    Z_i = SparsePauliOp(Pauli('I'*i + 'Z' + 'I'*(num_qubits-i-1)), coeffs=[-M[i][i]])
+    pauli = generate_pauli_zij(num_qubits, i, i)
+    Z_i = SparsePauliOp(pauli, coeffs=[M[i][i]])
     q_hamiltonian += Z_i
 
 def format_sparsepauliop(op):
@@ -133,45 +137,39 @@ qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initi
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
-print('eigenvalue: ', result._eigenvalue.real)
+print('eigenvalue: ', result.eigenvalue.real)
 
 k = 0
-for i in range(num_qubits):
-    k += h[i]
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        k += J[i][j]
- 
-print('k: ', k)
 
-# alternative ground state energy calculation with h and J
+for i in range(num_qubits):
+    k += 0.5 * q[i]
+
+for i in range(num_qubits):
+    for j in range(num_qubits):
+        if i != j:
+            k += 0.5 * 0.25 * Q[i][j]
+
+print('\nk: ', k)
+
+# ground state energy calculation with Ising model
 bitstring = result.best_measurement['bitstring']
-spins = [-1 if bit == '0' else 1 for bit in bitstring]
+spins = [1 if bit == '0' else -1 for bit in bitstring]
 
 energy = 0
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
-        if J[i][j] != 0:
-            energy += J[i][j] * spins[i] * spins[j]
+        energy += H[i][j] * spins[i] * spins[j]
 
 for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        if J[i][j] != 0:
-            energy -= J[i][j] * spins[i]
+    energy +=  H[i][i] * spins[i]
 
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        if J[i][j] != 0:
-            energy -= J[i][j] * spins[j]
-        
-for i in range(num_qubits):
-    energy -= h[i] * spins[i]
+print(energy)
 
 print(f"The energy for bitstring {bitstring} with J is: {energy + k}")
 
-# with Q
-bits = [1 if bit == '0' else 0 for bit in bitstring]
+# with QUBO model
+bits = [0 if bit == '0' else 1 for bit in bitstring]
 
 en = 0
 
@@ -179,8 +177,9 @@ for i in range(num_qubits):
     en += q[i] * bits[i]
 
 for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
+    for j in range(num_qubits):
         if Q[i][j] != 0:
-            en += Q[i][j] * bits[i] * bits[j]
+            if i != j:
+                en += 0.5 * Q[i][j] * bits[i] * bits[j]
 
 print(f"The energy for bitstring {bitstring} with Q is: {en}")

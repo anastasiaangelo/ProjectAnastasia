@@ -7,11 +7,12 @@ import csv
 import matplotlib.pyplot as plt
 from copy import deepcopy
 
+num_rot = 2
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
-N = int(num/2)
+N = int(num/num_rot)
 
 print('Qii values: \n', q)
 

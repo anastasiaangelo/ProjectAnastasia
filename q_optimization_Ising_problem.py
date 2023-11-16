@@ -11,6 +11,7 @@ from copy import deepcopy
 df1 = pd.read_csv("one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
+N = int(num/2)
 
 print('Qii values: \n', q)
 
@@ -42,7 +43,7 @@ for i in range(num):
         H[i][j] = np.multiply(0.25, Q[i][j])
 
 for i in range(num):
-    H[i][i] = -0.5 * q[i] - sum(0.5 * Q[i][j] for j in range(num) if i != j)
+    H[i][i] = -0.5*(q[i] + sum(Q[i][j] for j in range(i+1, num)))
 
 print('\nH: \n', H)
 
@@ -53,8 +54,13 @@ def add_penalty_term(M, penalty_constant, residue_pairs):
         
     return M
 
-P = 3
-pairs = [(0,1), (2,3)]       #, (4,5), (6,7)]     #, (8,9), (10,11), (12,13)]
+P = 6
+
+def generate_pairs(N):
+    pairs = [(i, i+1) for i in range(0, 2*N, 2)]
+    return pairs
+
+pairs = generate_pairs(N)
 
 M = deepcopy(H)
 M = add_penalty_term(M, P, pairs)
@@ -188,9 +194,9 @@ for i in range(num_qubits):
         if i != j:
             k += 0.5 * 0.25 * Q[i][j]
 
-print('The ground state energy classically is: ', eigenvalues[0]+2*P+k)
+print('The ground state energy classically is: ', eigenvalues[0] + N*P + k)
 
-print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value']) + 2*P + k)
+print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value']) + N*P + k)
 
 # alternative ground state energy calculation with Ising model
 bitstring = result.best_measurement['bitstring']
@@ -216,9 +222,10 @@ for i in range(num_qubits):
     en += q[i] * bits[i]
 
 for i in range(num_qubits):
-    for j in range(num_qubits):
+    for j in range(i+1, num_qubits):
         if Q[i][j] != 0:
             if i != j:
                 en += 0.5 * Q[i][j] * bits[i] * bits[j]
+
 
 print(f"The energy for bitstring {bitstring} with QUBO model is: {en}")

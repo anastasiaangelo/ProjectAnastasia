@@ -18,12 +18,13 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction
-pose = pyrosetta.pose_from_pdb("protonated.pdb")
+pose = pyrosetta.pose_from_pdb("2res.pdb")
 
 residue_count = pose.total_residue()
 sfxn = get_score_function(True)
 print(pose.sequence())
 print(residue_count)
+
 
 relax_protocol = pyrosetta.rosetta.protocols.relax.FastRelax()
 relax_protocol.set_scorefxn(sfxn)
@@ -108,8 +109,8 @@ for residue_number in range(1, residue_count):
             E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
             Hamiltonian[rot_i-1, rot_j-1] = E[rot_i-1, rot_j-1]
 
-    for rot_i in range(10, num+9):     #rotamer_set_i.num_rotamers() + 1):
-        for rot_j in range(10, num+9):     #rotamer_set_j.num_rotamers() + 1):
+    for rot_i in range(20, num+19):    #rotamer_set_i.num_rotamers() + 1):
+        for rot_j in range(20, num+19):     #rotamer_set_j.num_rotamers() + 1):
             # print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
@@ -132,7 +133,7 @@ for residue_number in range(1, residue_count + 1):
 
     molten_res_i = rotsets.resid_2_moltenres(residue_number)
 
-    for rot_i in range(10, num+9):         #rotamer_set_i.num_rotamers() + 1):
+    for rot_i in range(20, num+19):         #rotamer_set_i.num_rotamers() + 1):
         E1[rot_i-1, rot_i-1] = ig.get_one_body_energy_for_node_state(molten_res_i, rot_i)
         Hamiltonian1[rot_i-1, rot_i-1] = E1[rot_i-1, rot_i-1]
         # print(f"Interaction score values of {residue1.name3()} rotamer {rot_i} with itself {Hamiltonian[rot_i-1,rot_i-1]}")

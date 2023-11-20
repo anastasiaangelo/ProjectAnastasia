@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 
 num_rot = 2
+
 ## configure the hamiltonian from the values calculated classically with pyrosetta
 df1 = pd.read_csv("one_body_terms.csv")
 q = df1['E_ii'].values
@@ -40,11 +41,12 @@ print('\nQij values: \n', Q)
 H = np.zeros((num,num))
 
 for i in range(num):
-    for j in range(i+1, num):
-        H[i][j] = np.multiply(0.25, Q[i][j])
+    for j in range(num):
+        if i != j:
+            H[i][j] = np.multiply(0.25, Q[i][j])
 
 for i in range(num):
-    H[i][i] = -0.5*(q[i] + sum(Q[i][j] for j in range(i+1, num)))
+    H[i][i] = -(0.5 * q[i] + sum(0.25 * Q[i][j] for j in range(num) if j != i))
 
 print('\nH: \n', H)
 
@@ -206,8 +208,9 @@ spins = [1 if bit == '0' else -1 for bit in bitstring]
 energy = 0
 
 for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        energy += H[i][j] * spins[i] * spins[j]
+    for j in range(num_qubits):
+        if i != j:
+            energy += 0.5 * H[i][j] * spins[i] * spins[j]
 
 for i in range(num_qubits):
     energy +=  H[i][i] * spins[i]
@@ -223,7 +226,7 @@ for i in range(num_qubits):
     en += q[i] * bits[i]
 
 for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
+    for j in range(num_qubits):
         if Q[i][j] != 0:
             if i != j:
                 en += 0.5 * Q[i][j] * bits[i] * bits[j]

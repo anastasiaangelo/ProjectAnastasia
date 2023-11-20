@@ -29,7 +29,7 @@ for i in range(0, num-2):
         Q[i][i+2] = deepcopy(value[n+1])
         Q[i+2][i] = deepcopy(value[n+1])
         n += 2
-
+print("Q: \n", Q)
 H = np.zeros((num,num))
 
 for i in range(num):
@@ -58,35 +58,34 @@ M = add_penalty_term(M, P, pairs)
 
 ## Classical optimisation:
 from scipy.sparse.linalg import eigsh
-num_qubits = num
 
 Z_matrix = np.array([[1, 0], [0, -1]])
 identity = np.eye(2)
 
-def construct_operator(qubit_indices, num_qubits):
+def construct_operator(qubit_indices, num):
     operator = np.eye(1)
-    for qubit in range(num_qubits):
+    for qubit in range(num):
         if qubit in qubit_indices:
             operator = np.kron(operator, Z_matrix)
         else:
             operator = np.kron(operator, identity)
     return operator
 
-C = np.zeros((2**num_qubits, 2**num_qubits))
+C = np.zeros((2**num, 2**num))
 
-for i in range(num_qubits):
-    operator = construct_operator([i], num_qubits)
+for i in range(num):
+    operator = construct_operator([i], num)
     C += H[i][i] * operator
 
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        operator = construct_operator([i, j], num_qubits)
+for i in range(num):
+    for j in range(i+1, num):
+        operator = construct_operator([i, j], num)
         C += H[i][j] * operator
 
-def create_hamiltonian(pairs, P, num_qubits):
-    H_pen = np.zeros((2**num_qubits, 2**num_qubits))
+def create_hamiltonian(pairs, P, num):
+    H_pen = np.zeros((2**num, 2**num))
     def tensor_term(term_indices):
-        term = [Z_matrix if i in term_indices else identity for i in range(num_qubits)]
+        term = [Z_matrix if i in term_indices else identity for i in range(num)]
         result = term[0]
         for t in term[1:]:
             result = np.kron(result, t)
@@ -98,7 +97,7 @@ def create_hamiltonian(pairs, P, num_qubits):
 
     return H_pen
 
-H_penalty = create_hamiltonian(pairs, P, num_qubits)
+H_penalty = create_hamiltonian(pairs, P, num)
 H_tot = C + H_penalty
 
 eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
@@ -111,8 +110,8 @@ from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
 
-def X_op(i, num_qubits):
-    op_list = ['I'] * num_qubits
+def X_op(i, num):
+    op_list = ['I'] * num
     op_list[i] = 'X'
     return SparsePauliOp(Pauli(''.join(op_list)))
 
@@ -130,17 +129,17 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
-q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
+q_hamiltonian = SparsePauliOp(Pauli('I'*num), coeffs=[0])
 
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
+for i in range(num):
+    for j in range(i+1, num):
         if M[i][j] != 0:
-            pauli = generate_pauli_zij(num_qubits, i, j)
+            pauli = generate_pauli_zij(num, i, j)
             op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             q_hamiltonian += op
 
-for i in range(num_qubits):
-    pauli = generate_pauli_zij(num_qubits, i, i)
+for i in range(num):
+    pauli = generate_pauli_zij(num, i, i)
     Z_i = SparsePauliOp(pauli, coeffs=[M[i][i]])
     q_hamiltonian += Z_i
 
@@ -154,7 +153,7 @@ def format_sparsepauliop(op):
 
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
-mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
+mixer_op = sum(X_op(i,num) for i in range(num))
 
 p = 10  # Number of QAOA layers
 initial_point = np.ones(2 * p)
@@ -164,11 +163,11 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
 
 k = 0
-for i in range(num_qubits):
+for i in range(num):
     k += 0.5 * q[i]
 
-for i in range(num_qubits):
-    for j in range(num_qubits):
+for i in range(num):
+    for j in range(num):
         if i != j:
             k += 0.5 * 0.25 * Q[i][j]
 
@@ -176,22 +175,91 @@ print('The ground state energy classically is: ', eigenvalues[0] + N_res*P + k)
 print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value']) + N_res*P + k)
 
 bitstring = result.best_measurement['bitstring']
-E_0 = np.zeros(N_res)
-E_1 = np.zeros(N_res)
+
+num_qubits = N_res
+
+E_0 = np.zeros(num_qubits)
+E_1 = np.zeros(num_qubits)
 
 t_0 = 0
 t_1 = 0
 
 for i in range(num):
-    if bitstring[i] == '0' and t_0 < N_res:
+    if bitstring[i] == '0' and t_0 < num_qubits:
         E_0[t_0] = q[i]
         t_0 += 1
-    elif bitstring[i] == '1' and t_1 < N_res:
+    elif bitstring[i] == '1' and t_1 < num_qubits:
         E_1[t_1] = q[i]
         t_1 += 1
 
-print('zero bitstirng energy values: \n', E_0)
-print('one bitstirng energy values: \n', E_1)
+print('zero bitstring energy values: \n', E_0)
+print('one bitstring energy values: \n', E_1)
+
+E_00 = np.zeros((num_qubits, num_qubits))
+E_01 = np.zeros((num_qubits, num_qubits))
+E_10 = np.zeros((num_qubits, num_qubits))
+E_11 = np.zeros((num_qubits, num_qubits))
+
+t_00 = 0
+t_01 = 0
+t_10 = 0
+t_11 = 0
+
+for i in range(num-num_rot):
+
+    if bitstring[i] == '0' and t_00 < N_res:
+        if i % 2 != 0:
+            for j in range(i+1, i+num_rot+1):
+                if bitstring[j] == '0':
+                    E_00[t_00][t_00+1] = Q[i][j]
+                    t_00 += 1
+        else:
+            for j in range(i+num_rot, i+num_rot+2):
+                if bitstring[j] == '0':
+                    E_00[t_00][t_00+1] = Q[i][j]
+                    t_00 += 1
+
+    if bitstring[i] == '0' and t_01 < N_res:
+        if i % 2 != 0:
+            for j in range(i+1, i+num_rot+1):
+                if bitstring[j] == '1':
+                    E_01[t_01][t_01+1] = Q[i][j]
+                    t_01 += 1
+        else:
+            for j in range(i+num_rot, i+num_rot+2):
+                if bitstring[j] == '1':
+                    E_01[t_01][t_01+1] = Q[i][j]
+                    t_01 += 1
+
+    if bitstring[i] == '1' and t_10 < N_res:
+        if i % 2 != 0:
+            for j in range(i+1, i+num_rot+1):
+                if bitstring[j] == '0':
+                    E_10[t_10][t_10+1] = Q[i][j]
+                    t_10 += 1
+        else:
+            for j in range(i+num_rot, i+num_rot+2):
+                if bitstring[j] == '0':
+                    E_10[t_10][t_10+1] = Q[i][j]
+                    t_10 += 1
+
+    if bitstring[i] == '1' and t_11 < N_res:
+        if i % 2 != 0:
+            for j in range(i+1, i+num_rot+1):
+                if bitstring[j] == '1':
+                    E_11[t_11][t_11+1] = Q[i][j]
+                    t_11 += 1
+        else:
+            for j in range(i+num_rot, i+num_rot+2):
+                if bitstring[j] == '1':
+                    E_11[t_11][t_11+1] = Q[i][j]
+                    t_11 += 1
+            
+
+print('zerozero bitstring energy values: \n', E_00)
+print('zeroone bitstring energy values: \n', E_01)
+print('onezero bitstring energy values: \n', E_10)
+print('oneone bitstring energy values: \n', E_11)
  
 H_self = np.zeros((num, num))
 H_int = np.zeros((num, num))
@@ -215,5 +283,9 @@ for i in range(num_qubits):
         operator = extended_operator(num_qubits, i, a)
         
 
-for i in range(num_qubits-1):
-    H_self = E_0[i] * a * a_dagger + E_1[i] * a_dagger * a
+for i in range(N_res-1):
+    H_self += E_0[i] * a[i] * a_dagger[i] + E_1[i] * a_dagger[i] * a[i]
+
+for i in range(N_res):
+    for j in range(i+1, N_res):
+        H_int += E_00 * a[i] * a_dagger[i] * a[j] * a_dagger[j] + E_01 * a[i] * a_dagger[i] * a[j] * a_dagger[j] + E_10 * a_dagger[i] * a[i] * a[j] * a_dagger[j] + E_11 * a_dagger[i] * a[i] * a_dagger[j] * a[j]

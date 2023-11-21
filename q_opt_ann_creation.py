@@ -3,6 +3,7 @@ import pandas as pd
 import csv
 import matplotlib.pyplot as plt
 from copy import deepcopy
+import cmath
 
 num_rot = 2
 
@@ -178,6 +179,7 @@ bitstring = result.best_measurement['bitstring']
 
 num_qubits = N_res
 
+
 E_0 = np.zeros(num_qubits)
 E_1 = np.zeros(num_qubits)
 
@@ -191,6 +193,12 @@ for i in range(num):
     elif bitstring[i] == '1' and t_1 < num_qubits:
         E_1[t_1] = q[i]
         t_1 += 1
+
+for i in range(num):
+    for j in range(num_rot):
+        E_j = np.zeros(num_qubits)
+        t_j = 0
+
 
 print('zero bitstring energy values: \n', E_0)
 print('one bitstring energy values: \n', E_1)
@@ -266,26 +274,62 @@ H_int = np.zeros((num, num))
 
 a = np.array([[0, 1], [0, 0]])
 a_dagger = np.array([[0, 0], [1, 0]])
-I = np.eye(2)
 
 #function to generate operators for n qubits, given n qubits and q target qubit, it returns the appropriate annihilation or creation operator extended to the n-qubit system
 def extended_operator(n, qubit, op):
-    ops = [I if i != qubit else op for i in range(n)]
+    ops = [identity if i != qubit else op for i in range(n)]
     extended_op = ops[0]
     for op in ops[1:]:
         extended_op = np.kron(extended_op, op)
     return extended_op
-
-num_qubits = N_res
-# to apply the annihilation/creation operators to all qubits in the system
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        operator = extended_operator(num_qubits, i, a)
         
-
 for i in range(N_res-1):
-    H_self += E_0[i] * a[i] * a_dagger[i] + E_1[i] * a_dagger[i] * a[i]
+    a_extended = extended_operator(num_qubits, i, a)
+    a_dagger_extended = extended_operator(num_qubits, i, a_dagger)
+    H_self += E_0[i] * a_extended @ a_dagger_extended + E_1[i] * a_dagger_extended @ a_extended
 
 for i in range(N_res):
     for j in range(i+1, N_res):
-        H_int += E_00 * a[i] * a_dagger[i] * a[j] * a_dagger[j] + E_01 * a[i] * a_dagger[i] * a[j] * a_dagger[j] + E_10 * a_dagger[i] * a[i] * a[j] * a_dagger[j] + E_11 * a_dagger[i] * a[i] * a_dagger[j] * a[j]
+        a_i = extended_operator(num_qubits, i, a)
+        a_dagger_i = extended_operator(num_qubits, i, a_dagger)
+        a_j = extended_operator(num_qubits, j, a)
+        a_dagger_j = extended_operator(num_qubits, j, a_dagger)
+        H_int += E_00[i][j] * a_i @ a_dagger_i @ a_j @ a_dagger_j + \
+                 E_01[i][j] * a_i @ a_dagger_i @ a_dagger_j @ a_j + \
+                 E_10[i][j] * a_dagger_i @ a_i @ a_j @ a_dagger_j + \
+                 E_11[i][j] * a_dagger_i @ a_i @ a_dagger_j @ a_j
+        
+
+## Mapping to qubits
+def a_dag_pauli(i, num):
+    op_list = ['I'] * num
+    op_list[i] = 0.5 * complex('X', -'Y')
+    return SparsePauliOp(Pauli(''.join(op_list)))
+
+def a_pauli(i, num):
+    op_list = ['I'] * num
+    op_list[i] = 0.5 * complex('X', 'Y')
+    return SparsePauliOp(Pauli(''.join(op_list)))
+
+def N_0(i, num):
+    op_list = ['I'] * num
+    op_list[i] = 0.5 * (identity + 'Z')
+    return SparsePauliOp(Pauli(''.join(op_list)))
+
+def N_1(i, num):
+    op_list = ['I'] * num
+    op_list[i] = 0.5 * (identity - 'Z')
+    return SparsePauliOp(Pauli(''.join(op_list)))
+
+for i in range(N_res-1):
+    N_0i = N_0(i, num_qubits)
+    N_1i = N_1(i, num_qubits)
+    H_self += E_0[i] * N_0i + E_1[i] * N_1i
+
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        N_0i = N_0(i, num_qubits)
+        N_1i = N_1(i, num_qubits)
+        N_0j = N_0(j, num_qubits)
+        N_1j = N_1(j, num_qubits)
+        H_int += E_00[i][j] * N_0i @ N_0j + E_01[i][j] * N_0i @ N_1j + E_10[i][j] * N_1i @ N_0j + E_11[i][j] * N_1i @ N_1j

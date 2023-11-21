@@ -258,8 +258,8 @@ for i in range(num-num_rot):
                     E_11[t_11][t_11+1] = Q[i][j]
                     t_11 += 1
  
-H_self = np.zeros((num, num), dtype=np.complex128)
-H_int = np.zeros((num, num), dtype=np.complex128)        
+H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
+H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])  
 
 ## Mapping to qubits
 def N_0(i, num):
@@ -267,26 +267,25 @@ def N_0(i, num):
     op_list[i] = 'Z'
     return 0.5 * (SparsePauliOp(Pauli(''.join(['I'] * num))) + SparsePauliOp(Pauli(''.join(op_list))))
 
-
 def N_1(i, num):
     op_list = ['I'] * num
     op_list[i] = 'Z'
     return 0.5 * (SparsePauliOp(Pauli(''.join(['I'] * num))) - SparsePauliOp(Pauli(''.join(op_list))))
 
 for i in range(N_res-1):
-    N_0i = Operator(N_0(i, num_qubits)).data
-    N_1i = Operator(N_1(i, num_qubits)).data
+    N_0i = N_0(i, num_qubits)
+    N_1i = N_1(i, num_qubits)
     H_self += E_0[i] * N_0i + E_1[i] * N_1i
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
-        N_0i = Operator(N_0(i, num_qubits)).data
-        N_1i = Operator(N_1(i, num_qubits)).data
-        N_0j = Operator(N_0(j, num_qubits)).data
-        N_1j = Operator(N_1(j, num_qubits)).data
+        N_0i = N_0(i, num_qubits)
+        N_1i = N_1(i, num_qubits)
+        N_0j = N_0(j, num_qubits)
+        N_1j = N_1(j, num_qubits)
         H_int += E_00[i][j] * N_0i @ N_0j + E_01[i][j] * N_0i @ N_1j + E_10[i][j] * N_1i @ N_0j + E_11[i][j] * N_1i @ N_1j
 
-H_gen = SparsePauliOp.from_operator(H_int + H_self)
+H_gen = H_int + H_self
 
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 p = 10

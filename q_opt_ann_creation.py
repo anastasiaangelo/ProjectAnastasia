@@ -179,7 +179,6 @@ bitstring = result.best_measurement['bitstring']
 
 num_qubits = N_res
 
-
 E_0 = np.zeros(num_qubits)
 E_1 = np.zeros(num_qubits)
 
@@ -198,10 +197,6 @@ for i in range(num):
     for j in range(num_rot):
         E_j = np.zeros(num_qubits)
         t_j = 0
-
-
-print('zero bitstring energy values: \n', E_0)
-print('one bitstring energy values: \n', E_1)
 
 E_00 = np.zeros((num_qubits, num_qubits))
 E_01 = np.zeros((num_qubits, num_qubits))
@@ -262,74 +257,42 @@ for i in range(num-num_rot):
                 if bitstring[j] == '1':
                     E_11[t_11][t_11+1] = Q[i][j]
                     t_11 += 1
-            
-
-print('zerozero bitstring energy values: \n', E_00)
-print('zeroone bitstring energy values: \n', E_01)
-print('onezero bitstring energy values: \n', E_10)
-print('oneone bitstring energy values: \n', E_11)
  
-H_self = np.zeros((num, num))
-H_int = np.zeros((num, num))
-
-a = np.array([[0, 1], [0, 0]])
-a_dagger = np.array([[0, 0], [1, 0]])
-
-#function to generate operators for n qubits, given n qubits and q target qubit, it returns the appropriate annihilation or creation operator extended to the n-qubit system
-def extended_operator(n, qubit, op):
-    ops = [identity if i != qubit else op for i in range(n)]
-    extended_op = ops[0]
-    for op in ops[1:]:
-        extended_op = np.kron(extended_op, op)
-    return extended_op
-        
-for i in range(N_res-1):
-    a_extended = extended_operator(num_qubits, i, a)
-    a_dagger_extended = extended_operator(num_qubits, i, a_dagger)
-    H_self += E_0[i] * a_extended @ a_dagger_extended + E_1[i] * a_dagger_extended @ a_extended
-
-for i in range(N_res):
-    for j in range(i+1, N_res):
-        a_i = extended_operator(num_qubits, i, a)
-        a_dagger_i = extended_operator(num_qubits, i, a_dagger)
-        a_j = extended_operator(num_qubits, j, a)
-        a_dagger_j = extended_operator(num_qubits, j, a_dagger)
-        H_int += E_00[i][j] * a_i @ a_dagger_i @ a_j @ a_dagger_j + \
-                 E_01[i][j] * a_i @ a_dagger_i @ a_dagger_j @ a_j + \
-                 E_10[i][j] * a_dagger_i @ a_i @ a_j @ a_dagger_j + \
-                 E_11[i][j] * a_dagger_i @ a_i @ a_dagger_j @ a_j
-        
+H_self = np.zeros((num, num), dtype=np.complex128)
+H_int = np.zeros((num, num), dtype=np.complex128)        
 
 ## Mapping to qubits
-def a_dag_pauli(i, num):
-    op_list = ['I'] * num
-    op_list[i] = 0.5 * complex('X', -'Y')
-    return SparsePauliOp(Pauli(''.join(op_list)))
-
-def a_pauli(i, num):
-    op_list = ['I'] * num
-    op_list[i] = 0.5 * complex('X', 'Y')
-    return SparsePauliOp(Pauli(''.join(op_list)))
-
 def N_0(i, num):
     op_list = ['I'] * num
-    op_list[i] = 0.5 * (identity + 'Z')
-    return SparsePauliOp(Pauli(''.join(op_list)))
+    op_list[i] = 'Z'
+    return 0.5 * (SparsePauliOp(Pauli(''.join(['I'] * num))) + SparsePauliOp(Pauli(''.join(op_list))))
+
 
 def N_1(i, num):
     op_list = ['I'] * num
-    op_list[i] = 0.5 * (identity - 'Z')
-    return SparsePauliOp(Pauli(''.join(op_list)))
+    op_list[i] = 'Z'
+    return 0.5 * (SparsePauliOp(Pauli(''.join(['I'] * num))) - SparsePauliOp(Pauli(''.join(op_list))))
 
 for i in range(N_res-1):
-    N_0i = N_0(i, num_qubits)
-    N_1i = N_1(i, num_qubits)
+    N_0i = Operator(N_0(i, num_qubits)).data
+    N_1i = Operator(N_1(i, num_qubits)).data
     H_self += E_0[i] * N_0i + E_1[i] * N_1i
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
-        N_0i = N_0(i, num_qubits)
-        N_1i = N_1(i, num_qubits)
-        N_0j = N_0(j, num_qubits)
-        N_1j = N_1(j, num_qubits)
+        N_0i = Operator(N_0(i, num_qubits)).data
+        N_1i = Operator(N_1(i, num_qubits)).data
+        N_0j = Operator(N_0(j, num_qubits)).data
+        N_1j = Operator(N_1(j, num_qubits)).data
         H_int += E_00[i][j] * N_0i @ N_0j + E_01[i][j] * N_0i @ N_1j + E_10[i][j] * N_1i @ N_0j + E_11[i][j] * N_1i @ N_1j
+
+H_gen = SparsePauliOp.from_operator(H_int + H_self)
+
+mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
+p = 10
+initial_point = np.ones(2 * p)
+qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
+print("\n\nThe result of the quantum optimisation using QAOA is: \n")
+print('best measurement', result_gen.best_measurement)
+print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))

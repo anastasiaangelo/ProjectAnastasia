@@ -193,10 +193,8 @@ for i in range(num):
         E_1[t_1] = q[i]
         t_1 += 1
 
-for i in range(num):
-    for j in range(num_rot):
-        E_j = np.zeros(num_qubits)
-        t_j = 0
+print('zero bitstring energy values: \n', E_0)
+print('one bitstring energy values: \n', E_1)
 
 E_00 = np.zeros((num_qubits, num_qubits))
 E_01 = np.zeros((num_qubits, num_qubits))
@@ -257,7 +255,48 @@ for i in range(num-num_rot):
                 if bitstring[j] == '1':
                     E_11[t_11][t_11+1] = Q[i][j]
                     t_11 += 1
- 
+
+print('zerozero bitstring energy values: \n', E_00)
+print('zeroone bitstring energy values: \n', E_01)
+print('onezero bitstring energy values: \n', E_10)
+print('oneone bitstring energy values: \n', E_11)
+
+## first classically
+
+H_s = np.zeros((2**num_qubits, 2**num_qubits))
+H_i = np.zeros((2**num_qubits, 2**num_qubits))
+
+a = np.array([[0, 1], [0, 0]])
+a_dagger = np.array([[0, 0], [1, 0]])
+
+def extended_operator(n, qubit, op):
+    ops = [identity if i != qubit else op for i in range(n)]
+    extended_op = ops[0]
+    for op in ops[1:]:
+        extended_op = np.kron(extended_op, op)
+    return extended_op
+        
+for i in range(N_res-1):
+    a_extended = extended_operator(num_qubits, i, a)
+    a_dagger_extended = extended_operator(num_qubits, i, a_dagger)
+    H_s += E_0[i] * a_extended @ a_dagger_extended + E_1[i] * a_dagger_extended @ a_extended
+
+for i in range(N_res):
+    for j in range(i+1, N_res):
+        a_i = extended_operator(num_qubits, i, a)
+        a_dagger_i = extended_operator(num_qubits, i, a_dagger)
+        a_j = extended_operator(num_qubits, j, a)
+        a_dagger_j = extended_operator(num_qubits, j, a_dagger)
+        H_i += E_00[i][j] * a_i @ a_dagger_i @ a_j @ a_dagger_j + \
+                 E_01[i][j] * a_i @ a_dagger_i @ a_dagger_j @ a_j + \
+                 E_10[i][j] * a_dagger_i @ a_i @ a_j @ a_dagger_j + \
+                 E_11[i][j] * a_dagger_i @ a_i @ a_dagger_j @ a_j
+
+H_tt = H_i + H_s
+eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
+
+print('The ground state with the number operator classically is: \n', eigenvalue[0])
+
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])  
 
@@ -268,6 +307,7 @@ def N_0(i, num):
     return 0.5 * (SparsePauliOp(Pauli(''.join(['I'] * num))) + SparsePauliOp(Pauli(''.join(op_list))))
 
 def N_1(i, num):
+    base_pauli = ['I'] * num
     op_list = ['I'] * num
     op_list[i] = 'Z'
     return 0.5 * (SparsePauliOp(Pauli(''.join(['I'] * num))) - SparsePauliOp(Pauli(''.join(op_list))))
@@ -295,3 +335,4 @@ result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
+print(result_gen)

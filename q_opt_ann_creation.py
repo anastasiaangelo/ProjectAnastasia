@@ -303,58 +303,35 @@ H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 
 ## Mapping to qubits
 def N_0(i, num):
-    operator = SparsePauliOp(Pauli('I'))
-    for _ in range(1,i):
-        operator = operator.tensor(SparsePauliOp(Pauli('I')))
-
     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) + SparsePauliOp(Pauli('Z'), coeffs=[0.5])
-    operator = operator.tensor(half)
 
-    for _ in range(i+1, num):
-        operator = operator.tensor(SparsePauliOp(Pauli('I')))
+    operator = SparsePauliOp(Pauli('I'))
+    for j in range(num-1):
+        if j == i:
+            operator = operator.tensor(half)
+        else:
+            operator = operator.tensor(SparsePauliOp(Pauli('I')))
 
     return operator
 
 def N_1(i, num):
-    operator = SparsePauliOp(Pauli('I'))
-    for _ in range(1,i):
-        operator = operator.tensor(SparsePauliOp(Pauli('I')))
-
     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) - SparsePauliOp(Pauli('Z'), coeffs=[0.5])
-    operator = operator.tensor(half)
 
-    for _ in range(i+1, num):
-        operator = operator.tensor(SparsePauliOp(Pauli('I')))
-
+    operator = SparsePauliOp(Pauli('I'))
+    for j in range(num-1):
+        if j == i:
+            operator = operator.tensor(half)
+        else:
+            operator = operator.tensor(SparsePauliOp(Pauli('I')))
+            
     return operator
 
-# def N_0(i, num):
-#     operator = SparsePauliOp(Pauli('I' * num))
-
-#     for term in ['I', 'Z']:
-#         op_list = ['I'] * num
-#         op_list[i] = term
-#         operator += SparsePauliOp(Pauli(''.join(op_list)), coeffs=[0.25])
-
-#     return operator
-
-# def N_1(i, num):
-#     operator = SparsePauliOp(Pauli('I' * num))
-
-#     for term in ['I', 'Z']:
-#         op_list = ['I'] * num
-#         op_list[i] = term
-#         coeff = 0.25 if term == 'I' else -0.25
-#         operator += SparsePauliOp(Pauli(''.join(op_list)), coeffs=[coeff])
-
-#     return operator
     
 for i in range(N_res-1):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
     H_self += E_0[i] * N_0i + E_1[i] * N_1i
     
-    # SparsePauliOp(N_0i, coeffs=[E_0[i]]) + SparsePauliOp(N_1i, coeffs=[E_1[i]])
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):

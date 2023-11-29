@@ -61,6 +61,7 @@ M = add_penalty_term(M, P, pairs)
 
 ## Classical optimisation:
 from scipy.sparse.linalg import eigsh
+from scipy.linalg import eig
 
 Z_matrix = np.array([[1, 0], [0, -1]])
 identity = np.eye(2)
@@ -269,22 +270,6 @@ print('oneone bitstring energy values: \n', E_11)
 H_s = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
 H_i = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
 
-# a = np.array([[0, 1], [0, 0]])
-# a_dagger = np.array([[0, 0], [1, 0]])
-
-
-# qc_x = QuantumCircuit(1)
-# qc_x.x(0)
-
-# qc_y = QuantumCircuit(1)
-# qc_y.y(0)
-
-# op_x = Operator(qc_x)
-# op_y = Operator(qc_y)
-
-# matrix_x = op_x.data
-# matrix_y = op_y.data
-
 X = np.array([[0, 1], [1, 0]])
 Y = np.array([[0, -1j], [1j, 0]])
 
@@ -294,11 +279,6 @@ a_dagger = 0.5 *(X - 1j*Y)
 aad = a@a_dagger
 ada = a_dagger@a
 
-def Y_op(i, num):
-    op_list = ['I'] * num
-    op_list[i] = 'Y'
-    return SparsePauliOp(Pauli(''.join(op_list)))
-
 def extended_operator(n, qubit, op):
     ops = [identity if i != qubit else op for i in range(n)]
     extended_op = ops[0]
@@ -306,26 +286,13 @@ def extended_operator(n, qubit, op):
         extended_op = np.kron(extended_op, op)
     return extended_op
         
-for i in range(N_res-1):
-    # X = X_op(i, num_qubits)
-    # Y = Y_op(i, num_qubits)
-    # a = 0.5*(X + 1j*Y)
-    # a_dagger = 0.5 *(X - 1j*Y)
-    # aad = a@a_dagger
-    # ada = a_dagger@a
+for i in range(N_res):
     aad_extended = extended_operator(num_qubits, i, aad)
     ada_extended = extended_operator(num_qubits, i, ada)
     H_s += E_1[i] * aad_extended + E_0[i] * ada_extended 
 
-
 for i in range(N_res):
     for j in range(i+1, N_res):
-        # X = X_op(i, num_qubits)
-        # Y = Y_op(i, num_qubits)
-        # a = 0.5*(X + 1j*Y)
-        # a_dagger = 0.5 *(X - 1j*Y)
-        # aad = a@a_dagger
-        # ada = a_dagger@a
         aad_extended = extended_operator(num_qubits, i, aad)
         ada_extended = extended_operator(num_qubits, i, ada)
         H_i += E_11[i][j] * aad_extended @ aad_extended + \
@@ -334,13 +301,17 @@ for i in range(N_res):
                  E_00[i][j] * ada_extended @ ada_extended
 
 H_tt = H_i + H_s 
-eigenvalue, eigenvector = eigsh(H_s, k=num_qubits, which='SA')
+eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
 
 print('The ground state with the number operator classically is: \n', eigenvalue[0])
 
 ## Mapping to qubits
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])  
+
+# Z = np.array([[1, 0], [0, -1]])
+# N0 = 0.5 * (identity + Z)
+# N1 = 0.5 * (identity - Z)
 
 def N_0(i, num):
     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) + SparsePauliOp(Pauli('Z'), coeffs=[0.5])
@@ -366,11 +337,35 @@ def N_1(i, num):
             
     return operator
 
-    
-for i in range(N_res-1):
+# def N_0(i, n):
+#     if i<0 or i >= n:
+#         raise ValueError(f"Indices out of bounds for n={n} qubits. ")
+        
+#     pauli_str = ['I']*n
+
+#     pauli_str[i] = N0
+
+#     return Pauli(''.join(pauli_str))
+
+# def N_1(i, n):
+#     if i<0 or i >= n:
+#         raise ValueError(f"Indices out of bounds for n={n} qubits. ")
+        
+#     pauli_str = ['I']*n
+
+#     pauli_str[i] = N1
+
+#     return Pauli(''.join(pauli_str))
+
+for i in range(num_qubits):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
-    H_self += E_0[i] * N_0i + E_1[i] * N_1i
+    print(f"N_0 {i} :", N_0i)
+    print(f"N_1 {i} :", N_1i)
+    # op = SparsePauliOp(N_0i, coeffs=[E_1[i]])
+    # op1 = SparsePauliOp(N_1i, coeffs=[E_0[i]])
+    # H_self += op + op1
+    H_self += E_1[i] * N_0i + E_0[i] * N_1i
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
@@ -378,7 +373,13 @@ for i in range(num_qubits):
         N_1i = N_1(i, num_qubits)
         N_0j = N_0(j, num_qubits)
         N_1j = N_1(j, num_qubits)
-        H_int += E_00[i][j] * N_0i @ N_0j + E_01[i][j] * N_0i @ N_1j + E_10[i][j] * N_1i @ N_0j + E_11[i][j] * N_1i @ N_1j
+
+        # op = SparsePauliOp(N_0i @ N_0j, coeffs=[E_11[i][j]])
+        # op1 = SparsePauliOp(N_0i @ N_1j, coeffs=[E_10[i][j]])
+        # op2 = SparsePauliOp(N_1i @ N_0j, coeffs=[E_01[i][j]])
+        # op3 = SparsePauliOp(N_1i @ N_1j, coeffs=[E_00[i][j]])
+        # H_int += op + op1 + op2 + op3
+        H_int += E_11[i][j] * N_0i @ N_0j + E_10[i][j] * N_0i @ N_1j + E_01[i][j] * N_1i @ N_0j + E_00[i][j] * N_1i @ N_1j
 
 H_gen = H_int + H_self
 
@@ -390,4 +391,3 @@ result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
-print(result_gen)

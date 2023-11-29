@@ -307,35 +307,7 @@ print('The ground state with the number operator classically is: \n', eigenvalue
 
 ## Mapping to qubits
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
-H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])  
-
-Z = np.array([[1, 0], [0, -1]])
-N0 = 0.5 * (identity + Z)
-N1 = 0.5 * (identity - Z)
-
-# def N_0(i, num):
-#     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) + SparsePauliOp(Pauli('Z'), coeffs=[0.5])
-
-#     operator = SparsePauliOp(Pauli('I'))
-#     for j in range(num-1):
-#         if j == i:
-#             operator = operator.tensor(half)
-#         else:
-#             operator = operator.tensor(SparsePauliOp(Pauli('I')))
-
-#     return operator
-
-# def N_1(i, num):
-#     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) - SparsePauliOp(Pauli('Z'), coeffs=[0.5])
-
-#     operator = SparsePauliOp(Pauli('I'))
-#     for j in range(num-1):
-#         if j == i:
-#             operator = operator.tensor(half)
-#         else:
-#             operator = operator.tensor(SparsePauliOp(Pauli('I')))
-            
-#     return operator
+H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0]) 
 
 def N_0(i, n):
     pauli_str = ['I'] * n
@@ -357,9 +329,6 @@ for i in range(num_qubits):
     N_1i = N_1(i, num_qubits)
     print(f"N_0 {i} :", N_0i)
     print(f"N_1 {i} :", N_1i)
-    # op = SparsePauliOp(N_0i, coeffs=[E_1[i]])
-    # op1 = SparsePauliOp(N_1i, coeffs=[E_0[i]])
-    # H_self += op + op1
     H_self += E_1[i] * N_0i + E_0[i] * N_1i
 
 for i in range(num_qubits):
@@ -368,12 +337,6 @@ for i in range(num_qubits):
         N_1i = N_1(i, num_qubits)
         N_0j = N_0(j, num_qubits)
         N_1j = N_1(j, num_qubits)
-
-        # op = SparsePauliOp(N_0i @ N_0j, coeffs=[E_11[i][j]])
-        # op1 = SparsePauliOp(N_0i @ N_1j, coeffs=[E_10[i][j]])
-        # op2 = SparsePauliOp(N_1i @ N_0j, coeffs=[E_01[i][j]])
-        # op3 = SparsePauliOp(N_1i @ N_1j, coeffs=[E_00[i][j]])
-        # H_int += op + op1 + op2 + op3
         H_int += E_11[i][j] * N_0i @ N_0j + E_10[i][j] * N_0i @ N_1j + E_01[i][j] * N_1i @ N_0j + E_00[i][j] * N_1i @ N_1j
 
 H_gen = H_int + H_self

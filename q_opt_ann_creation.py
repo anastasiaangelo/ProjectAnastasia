@@ -309,53 +309,48 @@ print('The ground state with the number operator classically is: \n', eigenvalue
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])  
 
-# Z = np.array([[1, 0], [0, -1]])
-# N0 = 0.5 * (identity + Z)
-# N1 = 0.5 * (identity - Z)
+Z = np.array([[1, 0], [0, -1]])
+N0 = 0.5 * (identity + Z)
+N1 = 0.5 * (identity - Z)
 
-def N_0(i, num):
-    half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) + SparsePauliOp(Pauli('Z'), coeffs=[0.5])
+# def N_0(i, num):
+#     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) + SparsePauliOp(Pauli('Z'), coeffs=[0.5])
 
-    operator = SparsePauliOp(Pauli('I'))
-    for j in range(num-1):
-        if j == i:
-            operator = operator.tensor(half)
-        else:
-            operator = operator.tensor(SparsePauliOp(Pauli('I')))
+#     operator = SparsePauliOp(Pauli('I'))
+#     for j in range(num-1):
+#         if j == i:
+#             operator = operator.tensor(half)
+#         else:
+#             operator = operator.tensor(SparsePauliOp(Pauli('I')))
 
-    return operator
+#     return operator
 
-def N_1(i, num):
-    half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) - SparsePauliOp(Pauli('Z'), coeffs=[0.5])
+# def N_1(i, num):
+#     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) - SparsePauliOp(Pauli('Z'), coeffs=[0.5])
 
-    operator = SparsePauliOp(Pauli('I'))
-    for j in range(num-1):
-        if j == i:
-            operator = operator.tensor(half)
-        else:
-            operator = operator.tensor(SparsePauliOp(Pauli('I')))
+#     operator = SparsePauliOp(Pauli('I'))
+#     for j in range(num-1):
+#         if j == i:
+#             operator = operator.tensor(half)
+#         else:
+#             operator = operator.tensor(SparsePauliOp(Pauli('I')))
             
-    return operator
+#     return operator
 
-# def N_0(i, n):
-#     if i<0 or i >= n:
-#         raise ValueError(f"Indices out of bounds for n={n} qubits. ")
-        
-#     pauli_str = ['I']*n
+def N_0(i, n):
+    pauli_str = ['I'] * n
+    pauli_str[i] = 'Z'
+    z_op = SparsePauliOp(Pauli(''.join(pauli_str)), coeffs=[0.5])
+    i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
+    return z_op + i_op
 
-#     pauli_str[i] = N0
 
-#     return Pauli(''.join(pauli_str))
-
-# def N_1(i, n):
-#     if i<0 or i >= n:
-#         raise ValueError(f"Indices out of bounds for n={n} qubits. ")
-        
-#     pauli_str = ['I']*n
-
-#     pauli_str[i] = N1
-
-#     return Pauli(''.join(pauli_str))
+def N_1(i, n):
+    pauli_str = ['I'] * n
+    pauli_str[i] = 'Z'
+    z_op = SparsePauliOp(Pauli(''.join(pauli_str)), coeffs=[-0.5])
+    i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
+    return z_op + i_op
 
 for i in range(num_qubits):
     N_0i = N_0(i, num_qubits)

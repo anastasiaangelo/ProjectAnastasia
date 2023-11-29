@@ -30,6 +30,8 @@ for i in range(0, num-2):
         Q[i][i+2] = deepcopy(value[n+1])
         Q[i+2][i] = deepcopy(value[n+1])
         n += 2
+
+print("q: \n", q)
 print("Q: \n", Q)
 H = np.zeros((num,num))
 
@@ -264,11 +266,38 @@ print('oneone bitstring energy values: \n', E_11)
 
 ## first classically
 
-H_s = np.zeros((2**num_qubits, 2**num_qubits))
-H_i = np.zeros((2**num_qubits, 2**num_qubits))
+H_s = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
+H_i = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
 
-a = np.array([[0, 1], [0, 0]])
-a_dagger = np.array([[0, 0], [1, 0]])
+# a = np.array([[0, 1], [0, 0]])
+# a_dagger = np.array([[0, 0], [1, 0]])
+
+
+# qc_x = QuantumCircuit(1)
+# qc_x.x(0)
+
+# qc_y = QuantumCircuit(1)
+# qc_y.y(0)
+
+# op_x = Operator(qc_x)
+# op_y = Operator(qc_y)
+
+# matrix_x = op_x.data
+# matrix_y = op_y.data
+
+X = np.array([[0, 1], [1, 0]])
+Y = np.array([[0, -1j], [1j, 0]])
+
+a = 0.5*(X + 1j*Y)
+a_dagger = 0.5 *(X - 1j*Y) 
+
+aad = a@a_dagger
+ada = a_dagger@a
+
+def Y_op(i, num):
+    op_list = ['I'] * num
+    op_list[i] = 'Y'
+    return SparsePauliOp(Pauli(''.join(op_list)))
 
 def extended_operator(n, qubit, op):
     ops = [identity if i != qubit else op for i in range(n)]
@@ -278,30 +307,41 @@ def extended_operator(n, qubit, op):
     return extended_op
         
 for i in range(N_res-1):
-    a_extended = extended_operator(num_qubits, i, a)
-    a_dagger_extended = extended_operator(num_qubits, i, a_dagger)
-    H_s += E_0[i] * a_extended @ a_dagger_extended + E_1[i] * a_dagger_extended @ a_extended
+    # X = X_op(i, num_qubits)
+    # Y = Y_op(i, num_qubits)
+    # a = 0.5*(X + 1j*Y)
+    # a_dagger = 0.5 *(X - 1j*Y)
+    # aad = a@a_dagger
+    # ada = a_dagger@a
+    aad_extended = extended_operator(num_qubits, i, aad)
+    ada_extended = extended_operator(num_qubits, i, ada)
+    H_s += E_1[i] * aad_extended + E_0[i] * ada_extended 
+
 
 for i in range(N_res):
     for j in range(i+1, N_res):
-        a_i = extended_operator(num_qubits, i, a)
-        a_dagger_i = extended_operator(num_qubits, i, a_dagger)
-        a_j = extended_operator(num_qubits, j, a)
-        a_dagger_j = extended_operator(num_qubits, j, a_dagger)
-        H_i += E_00[i][j] * a_i @ a_dagger_i @ a_j @ a_dagger_j + \
-                 E_01[i][j] * a_i @ a_dagger_i @ a_dagger_j @ a_j + \
-                 E_10[i][j] * a_dagger_i @ a_i @ a_j @ a_dagger_j + \
-                 E_11[i][j] * a_dagger_i @ a_i @ a_dagger_j @ a_j
+        # X = X_op(i, num_qubits)
+        # Y = Y_op(i, num_qubits)
+        # a = 0.5*(X + 1j*Y)
+        # a_dagger = 0.5 *(X - 1j*Y)
+        # aad = a@a_dagger
+        # ada = a_dagger@a
+        aad_extended = extended_operator(num_qubits, i, aad)
+        ada_extended = extended_operator(num_qubits, i, ada)
+        H_i += E_11[i][j] * aad_extended @ aad_extended + \
+                 E_10[i][j] * aad_extended @ ada_extended + \
+                 E_01[i][j] * ada_extended @ aad_extended + \
+                 E_00[i][j] * ada_extended @ ada_extended
 
-H_tt = H_i + H_s
-eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
+H_tt = H_i + H_s 
+eigenvalue, eigenvector = eigsh(H_s, k=num_qubits, which='SA')
 
 print('The ground state with the number operator classically is: \n', eigenvalue[0])
 
+## Mapping to qubits
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])  
 
-## Mapping to qubits
 def N_0(i, num):
     half = SparsePauliOp(Pauli('I'), coeffs=[0.5]) + SparsePauliOp(Pauli('Z'), coeffs=[0.5])
 
@@ -331,7 +371,6 @@ for i in range(N_res-1):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
     H_self += E_0[i] * N_0i + E_1[i] * N_1i
-    
 
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):

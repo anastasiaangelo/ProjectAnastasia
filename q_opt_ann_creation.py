@@ -17,7 +17,7 @@ value = df['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
-for i in range(0, num-2):
+for i in range(num-2):
     if i%2 == 0:
         Q[i][i+2] = deepcopy(value[n])
         Q[i+2][i] = deepcopy(value[n])
@@ -112,7 +112,7 @@ eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 from qiskit import Aer, QuantumCircuit
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
-from qiskit_algorithms.optimizers import COBYLA
+from qiskit_algorithms.optimizers import COBYLA, L_BFGS_B
 from qiskit.primitives import Sampler
 
 def X_op(i, num):
@@ -156,7 +156,7 @@ def format_sparsepauliop(op):
         terms.append(f"{coeff:.10f} * {label}")
     return '\n'.join(terms)
 
-print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
+# print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
 mixer_op = sum(X_op(i,num) for i in range(num))
 
@@ -188,8 +188,6 @@ num_qubits = N_res
 for i in range(num):
     Q[i][i] = deepcopy(q[i])
 
-Qp = add_penalty_term(Q, P, pairs)
-
 E_0 = np.zeros(num_qubits)
 E_1 = np.zeros(num_qubits)
 
@@ -203,6 +201,9 @@ for i in range(num):
     elif bitstring[i] == '1' and t_1 < num_qubits:
         E_1[t_1] = Q[i][i]
         t_1 += 1
+
+print('E0: ', E_0)
+print('E1: ', E_1)
 
 E_00 = np.zeros((num_qubits, num_qubits))
 E_01 = np.zeros((num_qubits, num_qubits))
@@ -264,6 +265,10 @@ for i in range(num-num_rot):
                     E_11[t_11][t_11+1] = Q[i][j]
                     t_11 += 1
 
+print('E00: ', E_00)
+print('E01: ', E_01)
+print('E10: ', E_10)
+print('E11: ', E_11)
 
 ## First Classically
 
@@ -302,10 +307,10 @@ for i in range(N_res):
 
 H_tt = H_i + H_s 
 eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
-ground_state= eig(H_tt)
-
 print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
 print('The classical eigenstate is: ', eigenvalue)
+
+ground_state= eig(H_tt)
 print('eig result:', ground_state)
 
 ## Mapping to qubits
@@ -326,31 +331,140 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
+l=0
 for i in range(num_qubits):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
-    H_self += E_1[i] * N_0i + E_0[i] * N_1i
+    H_self += Q[l][l] * N_0i + Q[l+1][l+1] * N_1i 
+    l += 2
+    if l >= num:
+        break  
 
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        N_0i = N_0(i, num_qubits)
-        N_1i = N_1(i, num_qubits)
-        N_0j = N_0(j, num_qubits)
-        N_1j = N_1(j, num_qubits)
-        H_int += E_11[i][j] * N_0i @ N_0j + E_10[i][j] * N_0i @ N_1j + E_01[i][j] * N_1i @ N_0j + E_00[i][j] * N_1i @ N_1j
+for i in range(num_qubits-1):
+    N_0i = N_0(i, num_qubits)
+    N_1i = N_1(i, num_qubits)
+    N_0j = N_0(i+1, num_qubits)
+    N_1j = N_1(i+1, num_qubits)
+    H_int += Q[i][i+2] * N_0i @ N_0j + Q[i][i+3] * N_0i @ N_1j + Q[i+1][i+2] * N_1i @ N_0j + Q[i+1][i+3] * N_1i @ N_1j
+
+
+# H_self = Q[0][0] * N_0(0, num_qubits) + Q[1][1] * N_1(0, num_qubits) + Q[2][2] * N_0(1, num_qubits) + Q[3][3] * N_1(1, num_qubits)
+# H_int = Q[0][2] * N_0(0, num_qubits) @ N_0(1, num_qubits) + Q[0][3] * N_0(0, num_qubits) @ N_1(1, num_qubits) + Q[1][2] * N_1(0, num_qubits) @ N_0(1, num_qubits) + Q[1][3] * N_1(0,num_qubits) @ N_1(1, num_qubits)
+
+# l = 0
+# while l < num_qubits:
+#     N_0i = N_0(l, num_qubits)
+#     N_1i = N_1(l, num_qubits)
+
+#     for i in range(num):
+#         if bitstring[i] == '0':
+#             H_self += Q[i][i] * N_1i
+        
+#         elif bitstring[i] == '1':
+#             H_self += Q[i][i] * N_0i
+
+#         if i%2 == 1:        # change 2 to num_rot
+#             l += 1
+#             if l >= num_qubits:
+#                 break
+
+
+# s = 0
+# while s < num_qubits:
+#     k = s + 1
+#     while k < num_qubits:
+#         N_0i = N_0(s, num_qubits)
+#         N_1i = N_1(s, num_qubits)
+#         N_0j = N_0(k, num_qubits)
+#         N_1j = N_1(k, num_qubits)
+
+#         for i in range(num-num_rot):
+#             if bitstring[i] == '0':
+#                 if i % 2 != 0:
+#                     for j in range(i+1, i+num_rot+1):
+#                         if bitstring[j] == '0':
+#                             print(' 00 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_1i @ N_1j
+#                 else:
+#                     for j in range(i+num_rot, i+num_rot+2):
+#                         if bitstring[j] == '0':
+#                             print(' 00 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_1i @ N_1j
+
+#             if bitstring[i] == '0':
+#                 if i % 2 != 0:
+#                     for j in range(i+1, i+num_rot+1):
+#                         if bitstring[j] == '1':
+#                             print(' 01 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_1i @ N_0j
+#                 else:
+#                     for j in range(i+num_rot, i+num_rot+2):
+#                         if bitstring[j] == '1':
+#                             print(' 01 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_1i @ N_0j
+
+#             if bitstring[i] == '1':
+#                 if i % 2 != 0:
+#                     for j in range(i+1, i+num_rot+1):
+#                         if bitstring[j] == '0':
+#                             print(' 10 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_0i @ N_1j
+#                 else:
+#                     for j in range(i+num_rot, i+num_rot+2):
+#                         if bitstring[j] == '0':
+#                             print(' 10 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_0i @ N_1j
+
+#             if bitstring[i] == '1':
+#                 if i % 2 != 0:
+#                     for j in range(i+1, i+num_rot+1):
+#                         if bitstring[j] == '1':
+#                             print(' 11 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_0i @ N_0j
+#                 else:
+#                     for j in range(i+num_rot, i+num_rot+2):
+#                         if bitstring[j] == '1':
+#                             print(' 11 values i: ', i, 'l: ', s, 'k: ', k)
+#                             H_int += Q[i][j] * N_0i @ N_0j
+
+
+#             if i%2 == 1:        # change 2 to num_rot
+#                 k += 1
+#                 if k >= num_qubits:
+#                     s += 1
+#                     k = s + 1
+#                     break
+        
+#         if s >= num_qubits:
+#             break
+    
+#     if s >= num_qubits:
+#         break
+
+# #         # H_int += E_11[i][j] * N_0i @ N_0j + E_10[i][j] * N_0i @ N_1j + E_01[i][j] * N_1i @ N_0j + E_00[i][j] * N_1i @ N_1j
+
+# for i in range(num_qubits):
+#     N_0i = N_0(i, num_qubits)
+#     N_1i = N_1(i, num_qubits)
+#     H_self += E_0[i] * N_0i + E_1[i] * N_1i    
+
+# for i in range(num_qubits):
+#     for j in range(i+1, num_qubits):
+#         N_0i = N_0(i, num_qubits)
+#         N_1i = N_1(i, num_qubits)
+#         N_0j = N_0(j, num_qubits)
+#         N_1j = N_1(j, num_qubits)
+#         H_int += E_00[i][j] * N_0i @ N_0j + E_01[i][j] * N_0i @ N_1j + E_10[i][j] * N_1i @ N_0j + E_11[i][j] * N_1i @ N_1j
 
 H_gen = H_int + H_self
 
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 p = 10
 initial_point = np.ones(2*p)
-qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
+qaoa1 = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result_gen = qaoa1.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 print(result_gen)
-
-
-
 

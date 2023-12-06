@@ -331,25 +331,31 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
-l=0
-for i in range(num_qubits):
-    N_0i = N_0(i, num_qubits)
-    N_1i = N_1(i, num_qubits)
-    H_self += Q[l][l] * N_0i + Q[l+1][l+1] * N_1i 
-    l += 2
-    if l >= num:
-        break  
+# l=0
+# for i in range(num_qubits):
+#     N_0i = N_0(i, num_qubits)
+#     N_1i = N_1(i, num_qubits)
+#     H_self += Q[l][l] * N_0i + Q[l+1][l+1] * N_1i 
+#     l += 2
+#     if l >= num:
+#         break  
 
-for i in range(num_qubits-1):
-    N_0i = N_0(i, num_qubits)
-    N_1i = N_1(i, num_qubits)
-    N_0j = N_0(i+1, num_qubits)
-    N_1j = N_1(i+1, num_qubits)
-    H_int += Q[i][i+2] * N_0i @ N_0j + Q[i][i+3] * N_0i @ N_1j + Q[i+1][i+2] * N_1i @ N_0j + Q[i+1][i+3] * N_1i @ N_1j
+# j = 0
+# for i in range(num_qubits-1):
+#     N_0i = N_0(i, num_qubits)
+#     N_1i = N_1(i, num_qubits)
+#     N_0j = N_0(i+1, num_qubits)
+#     N_1j = N_1(i+1, num_qubits)
+#     H_int += Q[j][j+2] * N_0i @ N_0j + Q[j][j+3] * N_0i @ N_1j + Q[j+1][j+2] * N_1i @ N_0j + Q[j+1][j+3] * N_1i @ N_1j
+#     j += 2
+#     if j >= num:
+#         break
 
 
-# H_self = Q[0][0] * N_0(0, num_qubits) + Q[1][1] * N_1(0, num_qubits) + Q[2][2] * N_0(1, num_qubits) + Q[3][3] * N_1(1, num_qubits)
-# H_int = Q[0][2] * N_0(0, num_qubits) @ N_0(1, num_qubits) + Q[0][3] * N_0(0, num_qubits) @ N_1(1, num_qubits) + Q[1][2] * N_1(0, num_qubits) @ N_0(1, num_qubits) + Q[1][3] * N_1(0,num_qubits) @ N_1(1, num_qubits)
+H_self = Q[0][0] * N_0(0, num_qubits) + Q[1][1] * N_1(0, num_qubits) + Q[2][2] * N_0(1, num_qubits) + Q[3][3] * N_1(1, num_qubits)+ Q[4][4] * N_0(2, num_qubits) + Q[5][5] * N_1(2, num_qubits)+ Q[6][6] * N_0(3, num_qubits) + Q[7][7] * N_1(3, num_qubits)
+H_int = Q[0][2] * N_0(0, num_qubits) @ N_0(1, num_qubits) + Q[0][3] * N_0(0, num_qubits) @ N_1(1, num_qubits) + Q[1][2] * N_1(0, num_qubits) @ N_0(1, num_qubits) + Q[1][3] * N_1(0,num_qubits) @ N_1(1, num_qubits) + \
+        Q[2][5] * N_0(1, num_qubits) @ N_0(2, num_qubits) + Q[2][4] * N_0(1, num_qubits) @ N_1(2, num_qubits) + Q[3][5] * N_1(1, num_qubits) @ N_0(2, num_qubits) + Q[3][4] * N_1(1,num_qubits) @ N_1(2, num_qubits) + \
+        Q[5][7] * N_0(2, num_qubits) @ N_0(3, num_qubits) + Q[5][6] * N_0(2, num_qubits) @ N_1(3, num_qubits) + Q[7][4] * N_1(2, num_qubits) @ N_0(3, num_qubits) + Q[6][4] * N_1(2,num_qubits) @ N_1(3, num_qubits)
 
 # l = 0
 # while l < num_qubits:

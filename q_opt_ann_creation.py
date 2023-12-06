@@ -13,22 +13,23 @@ num = len(q)
 N_res = int(num/num_rot)
 
 df = pd.read_csv("two_body_terms.csv")
-value = df['E_ij'].values
+v = df['E_ij'].values
+numm = len(v)
 Q = np.zeros((num,num))
 n = 0
 
 for i in range(num-2):
     if i%2 == 0:
-        Q[i][i+2] = deepcopy(value[n])
-        Q[i+2][i] = deepcopy(value[n])
-        Q[i][i+3] = deepcopy(value[n+1])
-        Q[i+3][i] = deepcopy(value[n+1])
+        Q[i][i+2] = deepcopy(v[n])
+        Q[i+2][i] = deepcopy(v[n])
+        Q[i][i+3] = deepcopy(v[n+1])
+        Q[i+3][i] = deepcopy(v[n+1])
         n += 2
     elif i%2 != 0:
-        Q[i][i+1] = deepcopy(value[n])
-        Q[i+1][i] = deepcopy(value[n])
-        Q[i][i+2] = deepcopy(value[n+1])
-        Q[i+2][i] = deepcopy(value[n+1])
+        Q[i][i+1] = deepcopy(v[n])
+        Q[i+1][i] = deepcopy(v[n])
+        Q[i][i+2] = deepcopy(v[n+1])
+        Q[i+2][i] = deepcopy(v[n+1])
         n += 2
 
 print("q: \n", q)
@@ -331,136 +332,25 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
-# l=0
-# for i in range(num_qubits):
-#     N_0i = N_0(i, num_qubits)
-#     N_1i = N_1(i, num_qubits)
-#     H_self += Q[l][l] * N_0i + Q[l+1][l+1] * N_1i 
-#     l += 2
-#     if l >= num:
-#         break  
+l=0
+for i in range(num_qubits):
+    N_0i = N_0(i, num_qubits)
+    N_1i = N_1(i, num_qubits)
+    H_self += q[l] * N_0i + q[l+1] * N_1i 
+    l += 2
+    if l >= num:
+        break  
 
-# j = 0
-# for i in range(num_qubits-1):
-#     N_0i = N_0(i, num_qubits)
-#     N_1i = N_1(i, num_qubits)
-#     N_0j = N_0(i+1, num_qubits)
-#     N_1j = N_1(i+1, num_qubits)
-#     H_int += Q[j][j+2] * N_0i @ N_0j + Q[j][j+3] * N_0i @ N_1j + Q[j+1][j+2] * N_1i @ N_0j + Q[j+1][j+3] * N_1i @ N_1j
-#     j += 2
-#     if j >= num:
-#         break
-
-
-H_self = Q[0][0] * N_0(0, num_qubits) + Q[1][1] * N_1(0, num_qubits) + Q[2][2] * N_0(1, num_qubits) + Q[3][3] * N_1(1, num_qubits)+ Q[4][4] * N_0(2, num_qubits) + Q[5][5] * N_1(2, num_qubits)+ Q[6][6] * N_0(3, num_qubits) + Q[7][7] * N_1(3, num_qubits)
-H_int = Q[0][2] * N_0(0, num_qubits) @ N_0(1, num_qubits) + Q[0][3] * N_0(0, num_qubits) @ N_1(1, num_qubits) + Q[1][2] * N_1(0, num_qubits) @ N_0(1, num_qubits) + Q[1][3] * N_1(0,num_qubits) @ N_1(1, num_qubits) + \
-        Q[2][5] * N_0(1, num_qubits) @ N_0(2, num_qubits) + Q[2][4] * N_0(1, num_qubits) @ N_1(2, num_qubits) + Q[3][5] * N_1(1, num_qubits) @ N_0(2, num_qubits) + Q[3][4] * N_1(1,num_qubits) @ N_1(2, num_qubits) + \
-        Q[5][7] * N_0(2, num_qubits) @ N_0(3, num_qubits) + Q[5][6] * N_0(2, num_qubits) @ N_1(3, num_qubits) + Q[7][4] * N_1(2, num_qubits) @ N_0(3, num_qubits) + Q[6][4] * N_1(2,num_qubits) @ N_1(3, num_qubits)
-
-# l = 0
-# while l < num_qubits:
-#     N_0i = N_0(l, num_qubits)
-#     N_1i = N_1(l, num_qubits)
-
-#     for i in range(num):
-#         if bitstring[i] == '0':
-#             H_self += Q[i][i] * N_1i
-        
-#         elif bitstring[i] == '1':
-#             H_self += Q[i][i] * N_0i
-
-#         if i%2 == 1:        # change 2 to num_rot
-#             l += 1
-#             if l >= num_qubits:
-#                 break
-
-
-# s = 0
-# while s < num_qubits:
-#     k = s + 1
-#     while k < num_qubits:
-#         N_0i = N_0(s, num_qubits)
-#         N_1i = N_1(s, num_qubits)
-#         N_0j = N_0(k, num_qubits)
-#         N_1j = N_1(k, num_qubits)
-
-#         for i in range(num-num_rot):
-#             if bitstring[i] == '0':
-#                 if i % 2 != 0:
-#                     for j in range(i+1, i+num_rot+1):
-#                         if bitstring[j] == '0':
-#                             print(' 00 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_1i @ N_1j
-#                 else:
-#                     for j in range(i+num_rot, i+num_rot+2):
-#                         if bitstring[j] == '0':
-#                             print(' 00 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_1i @ N_1j
-
-#             if bitstring[i] == '0':
-#                 if i % 2 != 0:
-#                     for j in range(i+1, i+num_rot+1):
-#                         if bitstring[j] == '1':
-#                             print(' 01 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_1i @ N_0j
-#                 else:
-#                     for j in range(i+num_rot, i+num_rot+2):
-#                         if bitstring[j] == '1':
-#                             print(' 01 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_1i @ N_0j
-
-#             if bitstring[i] == '1':
-#                 if i % 2 != 0:
-#                     for j in range(i+1, i+num_rot+1):
-#                         if bitstring[j] == '0':
-#                             print(' 10 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_0i @ N_1j
-#                 else:
-#                     for j in range(i+num_rot, i+num_rot+2):
-#                         if bitstring[j] == '0':
-#                             print(' 10 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_0i @ N_1j
-
-#             if bitstring[i] == '1':
-#                 if i % 2 != 0:
-#                     for j in range(i+1, i+num_rot+1):
-#                         if bitstring[j] == '1':
-#                             print(' 11 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_0i @ N_0j
-#                 else:
-#                     for j in range(i+num_rot, i+num_rot+2):
-#                         if bitstring[j] == '1':
-#                             print(' 11 values i: ', i, 'l: ', s, 'k: ', k)
-#                             H_int += Q[i][j] * N_0i @ N_0j
-
-
-#             if i%2 == 1:        # change 2 to num_rot
-#                 k += 1
-#                 if k >= num_qubits:
-#                     s += 1
-#                     k = s + 1
-#                     break
-        
-#         if s >= num_qubits:
-#             break
-    
-#     if s >= num_qubits:
-#         break
-
-# #         # H_int += E_11[i][j] * N_0i @ N_0j + E_10[i][j] * N_0i @ N_1j + E_01[i][j] * N_1i @ N_0j + E_00[i][j] * N_1i @ N_1j
-
-# for i in range(num_qubits):
-#     N_0i = N_0(i, num_qubits)
-#     N_1i = N_1(i, num_qubits)
-#     H_self += E_0[i] * N_0i + E_1[i] * N_1i    
-
-# for i in range(num_qubits):
-#     for j in range(i+1, num_qubits):
-#         N_0i = N_0(i, num_qubits)
-#         N_1i = N_1(i, num_qubits)
-#         N_0j = N_0(j, num_qubits)
-#         N_1j = N_1(j, num_qubits)
-#         H_int += E_00[i][j] * N_0i @ N_0j + E_01[i][j] * N_0i @ N_1j + E_10[i][j] * N_1i @ N_0j + E_11[i][j] * N_1i @ N_1j
+j = 0
+for i in range(num_qubits):
+    N_0i = N_0(i, num_qubits)
+    N_1i = N_1(i, num_qubits)
+    N_0j = N_0(i+1, num_qubits)
+    N_1j = N_1(i+1, num_qubits)
+    H_int += v[j] * N_0i @ N_0j + v[j+1] * N_0i @ N_1j + v[j+2] * N_1i @ N_0j + v[j+3] * N_1i @ N_1j
+    j += 4
+    if j >= numm:
+        break
 
 H_gen = H_int + H_self
 

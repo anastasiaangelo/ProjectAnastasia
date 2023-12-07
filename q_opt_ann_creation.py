@@ -113,7 +113,7 @@ eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 from qiskit import Aer, QuantumCircuit
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
-from qiskit_algorithms.optimizers import COBYLA, L_BFGS_B
+from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
 
 def X_op(i, num):
@@ -157,7 +157,7 @@ def format_sparsepauliop(op):
         terms.append(f"{coeff:.10f} * {label}")
     return '\n'.join(terms)
 
-# print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
+print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
 mixer_op = sum(X_op(i,num) for i in range(num))
 
@@ -182,9 +182,31 @@ print('The ground state energy with QAOA is: ', np.real(result.best_measurement[
 
 
 ## Creation and Annihilation operators Hamiltonian
-bitstring = result.best_measurement['bitstring']
-
 num_qubits = N_res
+
+## First Classically
+
+H_s = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
+H_i = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
+
+X = np.array([[0, 1], [1, 0]])
+Y = np.array([[0, -1j], [1j, 0]])
+
+a = 0.5*(X + 1j*Y)
+a_dagger = 0.5 *(X - 1j*Y) 
+
+aad = a@a_dagger
+ada = a_dagger@a
+
+def extended_operator(n, qubit, op):
+    ops = [identity if i != qubit else op for i in range(n)]
+    extended_op = ops[0]
+    for op in ops[1:]:
+        extended_op = np.kron(extended_op, op)
+    return extended_op
+
+
+bitstring = result.best_measurement['bitstring']
 
 for i in range(num):
     Q[i][i] = deepcopy(q[i])
@@ -202,9 +224,6 @@ for i in range(num):
     elif bitstring[i] == '1' and t_1 < num_qubits:
         E_1[t_1] = Q[i][i]
         t_1 += 1
-
-print('E0: ', E_0)
-print('E1: ', E_1)
 
 E_00 = np.zeros((num_qubits, num_qubits))
 E_01 = np.zeros((num_qubits, num_qubits))
@@ -266,32 +285,6 @@ for i in range(num-num_rot):
                     E_11[t_11][t_11+1] = Q[i][j]
                     t_11 += 1
 
-print('E00: ', E_00)
-print('E01: ', E_01)
-print('E10: ', E_10)
-print('E11: ', E_11)
-
-## First Classically
-
-H_s = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
-H_i = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
-
-X = np.array([[0, 1], [1, 0]])
-Y = np.array([[0, -1j], [1j, 0]])
-
-a = 0.5*(X + 1j*Y)
-a_dagger = 0.5 *(X - 1j*Y) 
-
-aad = a@a_dagger
-ada = a_dagger@a
-
-def extended_operator(n, qubit, op):
-    ops = [identity if i != qubit else op for i in range(n)]
-    extended_op = ops[0]
-    for op in ops[1:]:
-        extended_op = np.kron(extended_op, op)
-    return extended_op
-        
 for i in range(N_res):
     aad_extended = extended_operator(num_qubits, i, aad)
     ada_extended = extended_operator(num_qubits, i, ada)
@@ -306,6 +299,27 @@ for i in range(N_res):
                  E_01[i][j] * ada_extended @ aad_extended + \
                  E_00[i][j] * ada_extended @ ada_extended
 
+# s = 0        
+# for i in range(N_res):
+#     aad_extended = extended_operator(num_qubits, i, aad)
+#     ada_extended = extended_operator(num_qubits, i, ada)
+#     H_s += q[s] * aad_extended + q[s+1] * ada_extended 
+#     s += 2
+#     if s >= num:
+#         break
+
+# k = 0
+# for i in range(N_res):
+#     aad_extended = extended_operator(num_qubits, i, aad)
+#     ada_extended = extended_operator(num_qubits, i, ada)
+#     H_i += v[k] * aad_extended @ aad_extended + \
+#                 v[k+1] * aad_extended @ ada_extended + \
+#                 v[k+2] * ada_extended @ aad_extended + \
+#                 v[k+3] * ada_extended @ ada_extended
+#     k += 4
+#     if k >= numm:
+#         break
+
 H_tt = H_i + H_s 
 eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
 print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
@@ -313,6 +327,7 @@ print('The classical eigenstate is: ', eigenvalue)
 
 ground_state= eig(H_tt)
 print('eig result:', ground_state)
+
 
 ## Mapping to qubits
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])

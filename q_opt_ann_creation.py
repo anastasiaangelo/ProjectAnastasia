@@ -205,12 +205,12 @@ def extended_operator(n, qubit, op):
         extended_op = np.kron(extended_op, op)
     return extended_op
 
-s = 0        
+s = 0
 for i in range(N_res):
     aad_extended = extended_operator(num_qubits, i, aad)
     ada_extended = extended_operator(num_qubits, i, ada)
     H_s += q[s] * aad_extended + q[s+1] * ada_extended 
-    s += 2
+    s += num_rot
     if s >= num:
         break
 
@@ -224,7 +224,7 @@ for i in range(N_res):
                 v[k+1] * aad_extended @ ada_extended1 + \
                 v[k+2] * ada_extended @ aad_extended1 + \
                 v[k+3] * ada_extended @ ada_extended1
-    k += 4
+    k += 2*num_qubits
     if k >= numm:
         break
 
@@ -255,14 +255,14 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
-l=0
+l = 0
 for i in range(N_res):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
     H_self += q[l] * N_0i + q[l+1] * N_1i 
-    l += 2
+    l += num_rot
     if l >= num:
-        break  
+        break
 
 j = 0
 for i in range(N_res-1):
@@ -271,7 +271,7 @@ for i in range(N_res-1):
     N_0j = N_0(i+1, num_qubits)
     N_1j = N_1(i+1, num_qubits)
     H_int += v[j] * N_0i @ N_0j + v[j+1] * N_0i @ N_1j + v[j+2] * N_1i @ N_0j + v[j+3] * N_1i @ N_1j
-    j += 4
+    j += 2**num_qubits
     if j >= numm:
         break
 

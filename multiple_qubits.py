@@ -35,7 +35,7 @@ from qiskit.primitives import Sampler
 ## Creation and Annihilation operators Hamiltonian
 num_qubits = N_res * qubit_per_res
 
-## First Classically
+## Classically
 
 H_s = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
 H_i = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
@@ -59,132 +59,48 @@ def extended_operator(n, qubit, op):
     return extended_op
 
 
-# bitstring = result.best_measurement['bitstring']
-
-# for i in range(num):
-#     Q[i][i] = deepcopy(q[i])
-
-# E_0 = np.zeros(num_qubits)
-# # E_0 = np.zeros(num-N_res)
-# E_1 = np.zeros(num_qubits)
-
-# t_0 = 0
-# t_1 = 0
-
-# for i in range(num):
-#     if bitstring[i] == '0' and t_0 < num_qubits:
-#     # if bitstring[i] == '0' and t_0 < num-N_res:
-#         E_0[t_0] = Q[i][i]
-#         t_0 += 1
-#     elif bitstring[i] == '1' and t_1 < num_qubits:
-#         E_1[t_1] = Q[i][i]
-#         t_1 += 1
-
-# E_00 = np.zeros((num_qubits, num_qubits))
-# E_01 = np.zeros((num_qubits, num_qubits))
-# E_10 = np.zeros((num_qubits, num_qubits))
-# E_11 = np.zeros((num_qubits, num_qubits))
-
-# t_00 = 0
-# t_01 = 0
-# t_10 = 0
-# t_11 = 0
-
-# for i in range(num-num_rot):
-
-#     if bitstring[i] == '0' and t_00 < N_res:
-#         if i % 2 != 0:
-#             for j in range(i+1, i+num_rot+1):
-#                 if bitstring[j] == '0':
-#                     E_00[t_00][t_00+1] = Q[i][j]
-#                     t_00 += 1
-#         else:
-#             for j in range(i+num_rot, i+num_rot+2):
-#                 if bitstring[j] == '0':
-#                     E_00[t_00][t_00+1] = Q[i][j]
-#                     t_00 += 1
-
-#     if bitstring[i] == '0' and t_01 < N_res:
-#         if i % 2 != 0:
-#             for j in range(i+1, i+num_rot+1):
-#                 if bitstring[j] == '1':
-#                     E_01[t_01][t_01+1] = Q[i][j]
-#                     t_01 += 1
-#         else:
-#             for j in range(i+num_rot, i+num_rot+2):
-#                 if bitstring[j] == '1':
-#                     E_01[t_01][t_01+1] = Q[i][j]
-#                     t_01 += 1
-
-#     if bitstring[i] == '1' and t_10 < N_res:
-#         if i % 2 != 0:
-#             for j in range(i+1, i+num_rot+1):
-#                 if bitstring[j] == '0':
-#                     E_10[t_10][t_10+1] = Q[i][j]
-#                     t_10 += 1
-#         else:
-#             for j in range(i+num_rot, i+num_rot+2):
-#                 if bitstring[j] == '0':
-#                     E_10[t_10][t_10+1] = Q[i][j]
-#                     t_10 += 1
-
-#     if bitstring[i] == '1' and t_11 < N_res:
-#         if i % 2 != 0:
-#             for j in range(i+1, i+num_rot+1):
-#                 if bitstring[j] == '1':
-#                     E_11[t_11][t_11+1] = Q[i][j]
-#                     t_11 += 1
-#         else:
-#             for j in range(i+num_rot, i+num_rot+2):
-#                 if bitstring[j] == '1':
-#                     E_11[t_11][t_11+1] = Q[i][j]
-#                     t_11 += 1
-
-# for i in range(N_res):
-#     aad_extended = extended_operator(num_qubits, i, aad)
-#     ada_extended = extended_operator(num_qubits, i, ada)
-#     H_s += E_1[i] * aad_extended + E_0[i] * ada_extended 
-
-# for i in range(N_res):
-#     for j in range(i+1, N_res):
-#         aad_extended = extended_operator(num_qubits, i, aad)
-#         ada_extended = extended_operator(num_qubits, i, ada)
-#         H_i += E_11[i][j] * aad_extended @ aad_extended + \
-#                  E_10[i][j] * aad_extended @ ada_extended + \
-#                  E_01[i][j] * ada_extended @ aad_extended + \
-#                  E_00[i][j] * ada_extended @ ada_extended
-
 s = 0        
-for i in range(N_res):
+for i in range(0, num_qubits, qubit_per_res):
     aad_extended = extended_operator(num_qubits, i, aad)
     ada_extended = extended_operator(num_qubits, i, ada)
-    H_s += q[s] * aad_extended + q[s+1] * ada_extended 
-    s += 2
+    aad_extended1 = extended_operator(num_qubits, i+1, aad)
+    ada_extended1 = extended_operator(num_qubits, i+1, ada)
+    H_s += q[s] * aad_extended @ aad_extended1 + q[s+1] * aad_extended @ ada_extended1 + q[s+2] * ada_extended @ aad_extended1 + q[s+3] * ada_extended @ ada_extended1
+    s += num_rot
     if s >= num:
         break
 
 k = 0
-for i in range(N_res):
-    aad_extended = extended_operator(num_qubits, i, aad)
-    ada_extended = extended_operator(num_qubits, i, ada)
-    H_i += v[k] * aad_extended @ aad_extended + \
-                v[k+1] * aad_extended @ ada_extended + \
-                v[k+2] * ada_extended @ aad_extended + \
-                v[k+3] * ada_extended @ ada_extended
-    k += 4
-    if k >= numm:
-        break
+for i in range(0, num_qubits, qubit_per_res):
+    for j in range(qubit_per_res, num_qubits, qubit_per_res):
+        aad_extended = extended_operator(num_qubits, i, aad)
+        ada_extended = extended_operator(num_qubits, i, ada)
+        aad_extended1 = extended_operator(num_qubits, i+1, aad)
+        ada_extended1 = extended_operator(num_qubits, i+1, ada)
+        aad_extendedj = extended_operator(num_qubits, j, aad)
+        ada_extendedj = extended_operator(num_qubits, j, ada)
+        aad_extendedj1 = extended_operator(num_qubits, j+1, aad)
+        ada_extendedj1 = extended_operator(num_qubits, j+1, ada)
+        if k >= numm:
+            break
+        H_i += v[k] * aad_extended @ aad_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+1] * aad_extended @ aad_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+2] * aad_extended @ aad_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+3] * aad_extended @ aad_extended1 @ ada_extendedj @ ada_extendedj1 + \
+                v[k+4] * aad_extended @ ada_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+5] * aad_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1 + v[k+6] * aad_extended @ ada_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+7] * aad_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1 + \
+                v[k+8] * ada_extended @ aad_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+9] * ada_extended @ aad_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+10] * ada_extended @ aad_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+11] * ada_extended @ aad_extended1 @ ada_extendedj @ ada_extendedj1 + \
+                v[k+12] * ada_extended @ ada_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+13] * ada_extended @ ada_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+14] * ada_extended @ ada_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+15] * ada_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1
 
+        k += 2**num_qubits 
+    
 H_tt = H_i + H_s 
+
 eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
 print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
-print('The classical eigenstate is: ', eigenvalue)
 
 ground_state= eig(H_tt)
 print('eig result:', ground_state)
 
 
 ## Mapping to qubits
+# for 2 qubits per residue, 4 rotamers per residue
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0]) 
 
@@ -202,35 +118,41 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
-for i in range(0, num, num_rot):  #each loop is one residue
-    for j in range(0, num_qubits, qubit_per_res):
+
+i = 0 #each loop is one residue
+for j in range(0, num_qubits, qubit_per_res):
+    N_0i = N_0(j, num_qubits)
+    N_1i = N_1(j, num_qubits)
+    N_0j = N_0(j+1, num_qubits)
+    N_1j = N_1(j+1, num_qubits)
+    H_self += q[i] * N_0i @ N_0j + q[i+1] * N_0i @ N_1j + q[i+2] * N_1i @ N_0j + q[i+3] * N_1i @ N_1j 
+    i += num_rot
+    if i >= num:
+        break
+
+
+i = 0     #one loop is one pair of residues
+for j in range(0, num_qubits, qubit_per_res):
+    for k in range(qubit_per_res, num_qubits, qubit_per_res):
         N_0i = N_0(j, num_qubits)
         N_1i = N_1(j, num_qubits)
-        N_0j = N_0(j+1, num_qubits)
-        N_1j = N_1(j+1, num_qubits)
-        H_self += q[i] * N_0i @ N_0j + q[i+1] * N_0i @ N_1j + q[i+2] * N_1i @ N_0j + q[i+3] * N_1i @ N_1j 
-
-
-for i in range(0, numm, 2**num_qubits):     #one loop is one pair of residues
-    for j in range(0, num_qubits, qubit_per_res):
-        for k in range(qubit_per_res, num_qubits, qubit_per_res):
-            N_0i = N_0(j, num_qubits)
-            N_1i = N_1(j, num_qubits)
-            N_0ii = N_0(j+1, num_qubits)
-            N_1ii = N_1(j+1, num_qubits)
-            N_0j = N_0(k, num_qubits)
-            N_1j = N_1(k, num_qubits)
-            N_0jj = N_0(k+1, num_qubits)
-            N_1jj = N_1(k+1, num_qubits)
-
-            H_int += v[i] * N_0i @ N_0ii @ N_0j @ N_0jj + v[i+1] * N_0i @ N_0ii @ N_0j @ N_1jj + v[i+2] * N_0i @ N_0ii @ N_1j @ N_0jj + v[i+3] * N_0i @ N_0ii @ N_1j @ N_1jj + \
-                    + v[i+4] * N_0i @ N_1ii @ N_0j @ N_0jj + v[i+5] * N_0i @ N_1ii @ N_1j @ N_1jj + v[i+6] * N_0i @ N_1ii @ N_1j @ N_0jj + + v[i+7] * N_0i @ N_1ii @ N_1j @ N_1jj + \
-                    + v[i+8] * N_1i @ N_0ii @ N_0j @ N_0jj + v[i+9] * N_1i @ N_0ii @ N_0j @ N_1jj + v[i+10] * N_1i @ N_0ii @ N_1j @ N_0jj + v[i+11] * N_1i @ N_0ii @ N_1j @ N_1jj + \
-                    + v[i+12] * N_1i @ N_1ii @ N_0j @ N_0jj + v[i+13] * N_1i @ N_1ii @ N_0j @ N_1jj + v[i+14] * N_1i @ N_1ii @ N_1j @ N_0jj + v[i+15] * N_1i @ N_1ii @ N_1j @ N_1jj 
+        N_0ii = N_0(j+1, num_qubits)
+        N_1ii = N_1(j+1, num_qubits)
+        N_0j = N_0(k, num_qubits)
+        N_1j = N_1(k, num_qubits)
+        N_0jj = N_0(k+1, num_qubits)
+        N_1jj = N_1(k+1, num_qubits)
+        if i >= numm:
+            break
+        H_int += v[i] * N_0i @ N_0ii @ N_0j @ N_0jj + v[i+1] * N_0i @ N_0ii @ N_0j @ N_1jj + v[i+2] * N_0i @ N_0ii @ N_1j @ N_0jj + v[i+3] * N_0i @ N_0ii @ N_1j @ N_1jj + \
+                + v[i+4] * N_0i @ N_1ii @ N_0j @ N_0jj + v[i+5] * N_0i @ N_1ii @ N_1j @ N_1jj + v[i+6] * N_0i @ N_1ii @ N_1j @ N_0jj + + v[i+7] * N_0i @ N_1ii @ N_1j @ N_1jj + \
+                + v[i+8] * N_1i @ N_0ii @ N_0j @ N_0jj + v[i+9] * N_1i @ N_0ii @ N_0j @ N_1jj + v[i+10] * N_1i @ N_0ii @ N_1j @ N_0jj + v[i+11] * N_1i @ N_0ii @ N_1j @ N_1jj + \
+                + v[i+12] * N_1i @ N_1ii @ N_0j @ N_0jj + v[i+13] * N_1i @ N_1ii @ N_0j @ N_1jj + v[i+14] * N_1i @ N_1ii @ N_1j @ N_0jj + v[i+15] * N_1i @ N_1ii @ N_1j @ N_1jj 
+        
+        i += 2**num_qubits
     
 
 H_gen = H_int + H_self
-
 
 def X_op(i, num):
     op_list = ['I'] * num

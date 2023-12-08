@@ -140,7 +140,7 @@ def X_op(i, num_qubits):
 def generate_pauli_zij(n, i, j):
     if i<0 or i >= n or j<0 or j>=n:
         raise ValueError(f"Indices out of bounds for n={n} qubits. ")
-   
+        
     pauli_str = ['I']*n
 
     if i == j:

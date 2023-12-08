@@ -205,127 +205,35 @@ def extended_operator(n, qubit, op):
         extended_op = np.kron(extended_op, op)
     return extended_op
 
-
-bitstring = result.best_measurement['bitstring']
-
-for i in range(num):
-    Q[i][i] = deepcopy(q[i])
-
-E_0 = np.zeros(num_qubits)
-E_1 = np.zeros(num_qubits)
-
-t_0 = 0
-t_1 = 0
-
-for i in range(num):
-    if bitstring[i] == '0' and t_0 < num_qubits:
-        E_0[t_0] = Q[i][i]
-        t_0 += 1
-    elif bitstring[i] == '1' and t_1 < num_qubits:
-        E_1[t_1] = Q[i][i]
-        t_1 += 1
-
-E_00 = np.zeros((num_qubits, num_qubits))
-E_01 = np.zeros((num_qubits, num_qubits))
-E_10 = np.zeros((num_qubits, num_qubits))
-E_11 = np.zeros((num_qubits, num_qubits))
-
-t_00 = 0
-t_01 = 0
-t_10 = 0
-t_11 = 0
-
-for i in range(num-num_rot):
-
-    if bitstring[i] == '0' and t_00 < N_res:
-        if i % 2 != 0:
-            for j in range(i+1, i+num_rot+1):
-                if bitstring[j] == '0':
-                    E_00[t_00][t_00+1] = Q[i][j]
-                    t_00 += 1
-        else:
-            for j in range(i+num_rot, i+num_rot+2):
-                if bitstring[j] == '0':
-                    E_00[t_00][t_00+1] = Q[i][j]
-                    t_00 += 1
-
-    if bitstring[i] == '0' and t_01 < N_res:
-        if i % 2 != 0:
-            for j in range(i+1, i+num_rot+1):
-                if bitstring[j] == '1':
-                    E_01[t_01][t_01+1] = Q[i][j]
-                    t_01 += 1
-        else:
-            for j in range(i+num_rot, i+num_rot+2):
-                if bitstring[j] == '1':
-                    E_01[t_01][t_01+1] = Q[i][j]
-                    t_01 += 1
-
-    if bitstring[i] == '1' and t_10 < N_res:
-        if i % 2 != 0:
-            for j in range(i+1, i+num_rot+1):
-                if bitstring[j] == '0':
-                    E_10[t_10][t_10+1] = Q[i][j]
-                    t_10 += 1
-        else:
-            for j in range(i+num_rot, i+num_rot+2):
-                if bitstring[j] == '0':
-                    E_10[t_10][t_10+1] = Q[i][j]
-                    t_10 += 1
-
-    if bitstring[i] == '1' and t_11 < N_res:
-        if i % 2 != 0:
-            for j in range(i+1, i+num_rot+1):
-                if bitstring[j] == '1':
-                    E_11[t_11][t_11+1] = Q[i][j]
-                    t_11 += 1
-        else:
-            for j in range(i+num_rot, i+num_rot+2):
-                if bitstring[j] == '1':
-                    E_11[t_11][t_11+1] = Q[i][j]
-                    t_11 += 1
-
+s = 0        
 for i in range(N_res):
     aad_extended = extended_operator(num_qubits, i, aad)
     ada_extended = extended_operator(num_qubits, i, ada)
-    H_s += E_1[i] * aad_extended + E_0[i] * ada_extended 
+    H_s += q[s] * aad_extended + q[s+1] * ada_extended 
+    s += 2
+    if s >= num:
+        break
 
+k = 0
 for i in range(N_res):
-    for j in range(i+1, N_res):
-        aad_extended = extended_operator(num_qubits, i, aad)
-        ada_extended = extended_operator(num_qubits, i, ada)
-        H_i += E_11[i][j] * aad_extended @ aad_extended + \
-                 E_10[i][j] * aad_extended @ ada_extended + \
-                 E_01[i][j] * ada_extended @ aad_extended + \
-                 E_00[i][j] * ada_extended @ ada_extended
-
-# s = 0        
-# for i in range(N_res):
-#     aad_extended = extended_operator(num_qubits, i, aad)
-#     ada_extended = extended_operator(num_qubits, i, ada)
-#     H_s += q[s] * aad_extended + q[s+1] * ada_extended 
-#     s += 2
-#     if s >= num:
-#         break
-
-# k = 0
-# for i in range(N_res):
-#     aad_extended = extended_operator(num_qubits, i, aad)
-#     ada_extended = extended_operator(num_qubits, i, ada)
-#     H_i += v[k] * aad_extended @ aad_extended + \
-#                 v[k+1] * aad_extended @ ada_extended + \
-#                 v[k+2] * ada_extended @ aad_extended + \
-#                 v[k+3] * ada_extended @ ada_extended
-#     k += 4
-#     if k >= numm:
-#         break
+    aad_extended = extended_operator(num_qubits, i, aad)
+    ada_extended = extended_operator(num_qubits, i, ada)
+    aad_extended1 = extended_operator(num_qubits, i+1, aad)
+    ada_extended1 = extended_operator(num_qubits, i+1, ada)
+    H_i += v[k] * aad_extended @ aad_extended1 + \
+                v[k+1] * aad_extended @ ada_extended1 + \
+                v[k+2] * ada_extended @ aad_extended1 + \
+                v[k+3] * ada_extended @ ada_extended1
+    k += 4
+    if k >= numm:
+        break
 
 H_tt = H_i + H_s 
 eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
 print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
 print('The classical eigenstate is: ', eigenvalue)
 
-ground_state= eig(H_tt)
+ground_state = eig(H_tt)
 print('eig result:', ground_state)
 
 
@@ -348,7 +256,7 @@ def N_1(i, n):
     return z_op + i_op
 
 l=0
-for i in range(num_qubits):
+for i in range(N_res):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
     H_self += q[l] * N_0i + q[l+1] * N_1i 
@@ -357,7 +265,7 @@ for i in range(num_qubits):
         break  
 
 j = 0
-for i in range(num_qubits):
+for i in range(N_res-1):
     N_0i = N_0(i, num_qubits)
     N_1i = N_1(i, num_qubits)
     N_0j = N_0(i+1, num_qubits)

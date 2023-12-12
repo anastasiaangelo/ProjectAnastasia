@@ -215,7 +215,7 @@ for i in range(N_res):
         break
 
 k = 0
-for i in range(N_res):
+for i in range(N_res-1):
     aad_extended = extended_operator(num_qubits, i, aad)
     ada_extended = extended_operator(num_qubits, i, ada)
     aad_extended1 = extended_operator(num_qubits, i+1, aad)
@@ -224,17 +224,17 @@ for i in range(N_res):
                 v[k+1] * aad_extended @ ada_extended1 + \
                 v[k+2] * ada_extended @ aad_extended1 + \
                 v[k+3] * ada_extended @ ada_extended1
-    k += 2*num_qubits
+    k += num_rot**2
     if k >= numm:
         break
 
 H_tt = H_i + H_s 
 eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
 print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
-print('The classical eigenstate is: ', eigenvalue)
+# print('The classical eigenstate is: ', eigenvalue)
 
-ground_state = eig(H_tt)
-print('eig result:', ground_state)
+# ground_state = eig(H_tt)
+# print('eig result:', ground_state)
 
 
 ## Mapping to qubits
@@ -271,7 +271,7 @@ for i in range(N_res-1):
     N_0j = N_0(i+1, num_qubits)
     N_1j = N_1(i+1, num_qubits)
     H_int += v[j] * N_0i @ N_0j + v[j+1] * N_0i @ N_1j + v[j+2] * N_1i @ N_0j + v[j+3] * N_1i @ N_1j
-    j += 2**num_qubits
+    j += num_rot**2
     if j >= numm:
         break
 
@@ -282,8 +282,8 @@ p = 10
 initial_point = np.ones(2*p)
 qaoa1 = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result_gen = qaoa1.compute_minimum_eigenvalue(H_gen)
-print("\n\nThe result of the quantum optimisation using QAOA is: \n")
+print("\n\nThe result of the quantum optimisation using QAOA with the number operators is: \n")
 print('best measurement', result_gen.best_measurement)
-print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
+print('\nThe ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']), '\n')
 print(result_gen)
 

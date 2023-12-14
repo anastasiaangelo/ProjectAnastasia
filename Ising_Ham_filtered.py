@@ -128,10 +128,9 @@ df = pd.read_csv('two_body_terms.csv')
 mean_two = df['E_ij'].mean()
 std_two = df['E_ij'].std()
 
-lower_bound2 = mean_two - 6 * std_two
 upper_bound2 = mean_two + 1 * std_two
 
-filtered_df = df[(df['E_ij'] >= lower_bound2) & (df['E_ij'] <= upper_bound2)]
+filtered_df = df[(df['E_ij'] <= upper_bound2)]
 
 filtered_df.to_csv('filtered_file_two.csv', index=False)
 
@@ -167,10 +166,9 @@ df1 = pd.read_csv('one_body_terms.csv')
 mean_one = df1['E_ii'].mean()
 std_one = df1['E_ii'].std()
 
-lower_bound1 = mean_one - 3 * std_one
 upper_bound1 = mean_one + 3 * std_one
 
-filtered_df1 = df1[(df1['E_ii'] >= lower_bound1) & (df1['E_ii'] <= upper_bound1)]
+filtered_df1 = df1[ (df1['E_ii'] <= upper_bound1)]
 
 filtered_df1.to_csv('filtered_file_one.csv', index=False)
 

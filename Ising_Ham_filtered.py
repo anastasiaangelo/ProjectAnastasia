@@ -75,17 +75,6 @@ df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
 df1 = pd.DataFrame(columns=['res i', 'rot A_i', 'E_ii'])
 
 
-# # Visualisation of structure after repacking with rotamers
-# pmm = PyMOLMover()
-# clone_pose = Pose()
-# clone_pose.assign(pose)
-# pmm.apply(clone_pose)
-# pmm.send_hbonds(clone_pose)
-# pmm.keep_history(True)
-# pmm.apply(clone_pose)
-
-
-
 # Loop to find Hamiltonian values Jij - interaction of rotamers on NN residues
 for residue_number in range(1, residue_count):
     rotamer_set_i = rotsets.rotamer_set_for_residue(residue_number)
@@ -128,6 +117,7 @@ df = pd.read_csv('two_body_terms.csv')
 mean_two = df['E_ij'].mean()
 std_two = df['E_ij'].std()
 
+
 upper_bound2 = mean_two + 1 * std_two
 
 filtered_df = df[(df['E_ij'] <= upper_bound2)]
@@ -136,8 +126,7 @@ filtered_df.to_csv('filtered_file_two.csv', index=False)
 
 
 # to choose the two rotamers with the largest energy in absolute value
-filtered_df.assign(abs_E=df['E_ij'].abs()).nlargest((num_rot ** 2) * (N_res-1), 'abs_E').drop(columns=['abs_E']).to_csv('two_body_terms.csv', index=False)
-
+# filtered_df.assign(abs_E=df['E_ij'].abs()).nlargest((num_rot ** 2) * (N_res-1), 'abs_E').drop(columns=['abs_E']).to_csv('two_body_terms.csv', index=False)
 
 
 
@@ -166,13 +155,14 @@ df1 = pd.read_csv('one_body_terms.csv')
 mean_one = df1['E_ii'].mean()
 std_one = df1['E_ii'].std()
 
-upper_bound1 = mean_one + 3 * std_one
 
-filtered_df1 = df1[ (df1['E_ii'] <= upper_bound1)]
+upper_bound1 = mean_one + 6 * std_one
+
+filtered_df1 = df1[(df1['E_ii'] <= upper_bound1)]
 
 filtered_df1.to_csv('filtered_file_one.csv', index=False)
 
 # to choose the two rotamers with the largest energy in absolute value
-filtered_df1.assign(abs_Ei=df1['E_ii'].abs()).nlargest(N_res * num_rot, 'abs_Ei').drop(columns=['abs_Ei']).to_csv('one_body_terms.csv', index=False)
+# filtered_df1.assign(abs_Ei=df1['E_ii'].abs()).nlargest(N_res * num_rot, 'abs_Ei').drop(columns=['abs_Ei']).to_csv('one_body_terms.csv', index=False)
 
 

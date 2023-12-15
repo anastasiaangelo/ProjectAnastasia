@@ -88,7 +88,7 @@ for i in range(0, num_qubits, qubit_per_res):
                 v[k+8] * ada_extended @ aad_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+9] * ada_extended @ aad_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+10] * ada_extended @ aad_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+11] * ada_extended @ aad_extended1 @ ada_extendedj @ ada_extendedj1 + \
                 v[k+12] * ada_extended @ ada_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+13] * ada_extended @ ada_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+14] * ada_extended @ ada_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+15] * ada_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1
 
-        k += 2**num_qubits 
+        k += num_rot**2
     
 H_tt = H_i + H_s 
 
@@ -149,7 +149,7 @@ for j in range(0, num_qubits, qubit_per_res):
                 + v[i+8] * N_1i @ N_0ii @ N_0j @ N_0jj + v[i+9] * N_1i @ N_0ii @ N_0j @ N_1jj + v[i+10] * N_1i @ N_0ii @ N_1j @ N_0jj + v[i+11] * N_1i @ N_0ii @ N_1j @ N_1jj + \
                 + v[i+12] * N_1i @ N_1ii @ N_0j @ N_0jj + v[i+13] * N_1i @ N_1ii @ N_0j @ N_1jj + v[i+14] * N_1i @ N_1ii @ N_1j @ N_0jj + v[i+15] * N_1i @ N_1ii @ N_1j @ N_1jj 
         
-        i += 2**num_qubits
+        i += num_rot**2
     
 
 H_gen = H_int + H_self

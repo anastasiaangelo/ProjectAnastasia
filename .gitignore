@@ -5,4 +5,6 @@
 *.cif
 *.mol
 *.params
-/QisikitDevenv
+QiskitDevenv
+PyRosetta4.Release.python310.mac.release-358
+student-notebooks

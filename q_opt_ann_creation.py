@@ -110,11 +110,12 @@ eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 
 ## Quantum optimisation
 #  Find minimum value using optimisation technique of QAOA
-from qiskit import Aer, QuantumCircuit
+from qiskit import Aer, QuantumCircuit, execute
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
+
 
 def X_op(i, num):
     op_list = ['I'] * num
@@ -230,7 +231,7 @@ for i in range(N_res-1):
 
 H_tt = H_i + H_s 
 eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
-print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
+print('\n\nThe ground state with the number operator classically is: ', eigenvalue[0])
 # print('The classical eigenstate is: ', eigenvalue)
 
 # ground_state = eig(H_tt)
@@ -282,7 +283,7 @@ p = 10
 initial_point = np.ones(2*p)
 qaoa1 = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result_gen = qaoa1.compute_minimum_eigenvalue(H_gen)
-print("\n\nThe result of the quantum optimisation using QAOA with the number operators is: \n")
+print("\nThe result of the quantum optimisation using QAOA with the number operators is: \n")
 print('best measurement', result_gen.best_measurement)
 print('\nThe ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']), '\n')
 print(result_gen)

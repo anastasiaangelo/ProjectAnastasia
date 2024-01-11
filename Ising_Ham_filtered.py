@@ -118,7 +118,7 @@ mean_two = df['E_ij'].mean()
 std_two = df['E_ij'].std()
 
 
-upper_bound2 = mean_two + 1 * std_two
+upper_bound2 = mean_two + 3 * std_two
 
 filtered_df = df[(df['E_ij'] <= upper_bound2)]
 

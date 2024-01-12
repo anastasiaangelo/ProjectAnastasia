@@ -181,22 +181,41 @@ for i in range(num):
 print('\nThe ground state energy classically is: ', eigenvalues[0] + N_res*P + k)
 print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value']) + N_res*P + k)
 
-from qiskit import execute
 from qiskit_aer.noise import NoiseModel
 from qiskit.utils import QuantumInstance
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
+from qiskit.providers.fake_provider import FakeKolkata
+from qiskit_ibm_runtime import QiskitRuntimeService, Estimator, Options, Session, Sampler
+
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()
 available_backends = provider.backends()
 print([backend.name for backend in available_backends])
-device = provider.get_backend('ibmq_qasm_simulator') 
-noise_model = NoiseModel.from_backend(device)
+backend = provider.get_backend('ibmq_qasm_simulator') 
+noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
-sampler = Sampler()
-qaoa = QAOA(optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian, callback = sampler.run(simulator))
+service = QiskitRuntimeService(channel="ibm_quantum")
+
+fake_backend = FakeKolkata()
+noise_model = NoiseModel.from_backend(fake_backend)
+options = Options()
+options.simulator = {
+    "noise_model": noise_model,
+    "basis_gates": fake_backend.configuration().basis_gates,
+    "coupling_map": fake_backend.configuration().coupling_map,
+    "seed_simulator": 42
+}
+options.execution.shots = 1000
+options.optimization_level = 0
+options.resilience_level = 0
+
+with Session(service=service, backend=backend):
+    sampler = Sampler(options=options)
+    qaoa = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+
+result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 

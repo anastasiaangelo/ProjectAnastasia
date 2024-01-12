@@ -185,18 +185,18 @@ from qiskit import execute
 from qiskit_aer.noise import NoiseModel
 from qiskit.utils import QuantumInstance
 from qiskit_ibm_provider import IBMProvider
+from qiskit_aer import AerSimulator
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()
 available_backends = provider.backends()
 print([backend.name for backend in available_backends])
 device = provider.get_backend('ibmq_qasm_simulator') 
-simulator = Aer.get_backend('qasm_simulator')
 noise_model = NoiseModel.from_backend(device)
-
-quantum_instance = QuantumInstance(backend=simulator, noise_model=noise_model)
-qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian, quantum_instance = quantum_instance)
+simulator = AerSimulator(noise_model = noise_model)
+sampler = Sampler()
+qaoa = QAOA(optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian, callback = sampler.run(simulator))
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 
@@ -308,8 +308,9 @@ print('\nThe ground state energy with QAOA is: ', np.real(result_gen.best_measur
 print(result_gen)
 
 quantum_instance = QuantumInstance(backend=simulator, noise_model=noise_model)
-qaoa2 = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result2 = qaoa.compute_minimum_eigenvalue(H_gen, quantum_instance = quantum_instance)
+sampler = Sampler(quantum_instance = quantum_instance)
+qaoa2 = QAOA(sampler= sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result2 = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the noisy quantum optimisation using QAOA with number operators is: \n")
 print('best measurement', result2.best_measurement)
 

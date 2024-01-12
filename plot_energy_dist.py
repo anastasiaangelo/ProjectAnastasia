@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.patches import ConnectionPatch
 
-df = pd.read_csv('two_body_terms.csv')
+df = pd.read_csv('Energy Files/two_body_terms.csv')
 two_energies = df['E_ij']
 
 print(df['E_ij'].describe())
@@ -50,7 +50,7 @@ ax.add_artist(con2)
 plt.show()
 
 
-df1 = pd.read_csv('filtered_file_one.csv')
+df1 = pd.read_csv('Energy Files/filtered_file_one.csv')
 one_energies = df1['E_ii']
 
 sns.histplot(one_energies, kde=True) 

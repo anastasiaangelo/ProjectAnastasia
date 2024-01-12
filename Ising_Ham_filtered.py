@@ -18,7 +18,7 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction
-pose = pyrosetta.pose_from_pdb("test1.pdb")
+pose = pyrosetta.pose_from_pdb("Input Files/test1.pdb")
 N_res = 4
 num_rot = 4
 
@@ -67,8 +67,8 @@ Hamiltonian = np.zeros((max_rotamers, max_rotamers))
 E1 = np.zeros((max_rotamers, max_rotamers))
 Hamiltonian1 = np.zeros((max_rotamers, max_rotamers))
 
-output_file = "two_body_terms.csv"
-output_file1 = "one_body_terms.csv"
+output_file = "Energy Files/two_body_terms.csv.csv"
+output_file1 = "Energy Files/one_body_terms.csv.csv"
 data_list = []
 data_list1 = []
 df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
@@ -110,10 +110,10 @@ for residue_number in range(1, residue_count):
 # Save the two-body energies to a csv file
 df = pd.DataFrame(data_list)
 
-df.to_csv('two_body_terms.csv', index=False)
+df.to_csv('Energy Files/two_body_terms.csv', index=False)
 
 
-df = pd.read_csv('two_body_terms.csv')
+df = pd.read_csv('Energy Files/two_body_terms.csv')
 mean_two = df['E_ij'].mean()
 std_two = df['E_ij'].std()
 
@@ -122,7 +122,7 @@ upper_bound2 = mean_two + 3 * std_two
 
 filtered_df = df[(df['E_ij'] <= upper_bound2)]
 
-filtered_df.to_csv('filtered_file_two.csv', index=False)
+filtered_df.to_csv('Energy Files/filtered_file_two.csv', index=False)
 
 
 # to choose the two rotamers with the largest energy in absolute value
@@ -149,9 +149,9 @@ for residue_number in range(1, residue_count + 1):
 
 # Save the one-body energies to a csv file
 df1 = pd.DataFrame(data_list1)
-df1.to_csv('one_body_terms.csv', index=False)
+df1.to_csv('Energy Files/one_body_terms.csv', index=False)
 
-df1 = pd.read_csv('one_body_terms.csv')
+df1 = pd.read_csv('Energy Files/one_body_terms.csv')
 mean_one = df1['E_ii'].mean()
 std_one = df1['E_ii'].std()
 
@@ -160,7 +160,7 @@ upper_bound1 = mean_one + 6 * std_one
 
 filtered_df1 = df1[(df1['E_ii'] <= upper_bound1)]
 
-filtered_df1.to_csv('filtered_file_one.csv', index=False)
+filtered_df1.to_csv('Energy Files/filtered_file_one.csv', index=False)
 
 # to choose the two rotamers with the largest energy in absolute value
 # filtered_df1.assign(abs_Ei=df1['E_ii'].abs()).nlargest(N_res * num_rot, 'abs_Ei').drop(columns=['abs_Ei']).to_csv('one_body_terms.csv', index=False)

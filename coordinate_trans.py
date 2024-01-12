@@ -11,7 +11,7 @@ import pandas as pd
 
 from Bio.PDB import PDBParser
 
-pose = pyrosetta.pose_from_pdb("test1.pdb")
+pose = pyrosetta.pose_from_pdb("Input Files/test1.pdb")
 
 # print out cartesian coordinates of each atom
 def extract_coordinates(pdb_file):
@@ -29,7 +29,7 @@ def extract_coordinates(pdb_file):
 
     return coordinates
 
-pdb_file = 'test1.pdb'
+pdb_file = 'Input Files/test1.pdb'
 coords = extract_coordinates(pdb_file)
 
 for coord in coords:

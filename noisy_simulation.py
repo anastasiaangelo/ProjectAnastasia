@@ -7,12 +7,12 @@ import cmath
 
 num_rot = 2
 
-df1 = pd.read_csv("one_body_terms.csv")
+df1 = pd.read_csv("Energy Files/one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
 N_res = int(num/num_rot)
 
-df = pd.read_csv("two_body_terms.csv")
+df = pd.read_csv("Energy Files/two_body_terms.csv")
 v = df['E_ij'].values
 numm = len(v)
 Q = np.zeros((num,num))
@@ -185,19 +185,19 @@ from qiskit_aer.noise import NoiseModel
 from qiskit.utils import QuantumInstance
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
-from qiskit.providers.fake_provider import FakeKolkata
+from qiskit.providers.fake_provider import FakeKolkata, FakeVigo
 from qiskit_ibm_runtime import QiskitRuntimeService, Estimator, Options, Session, Sampler
-
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()
 available_backends = provider.backends()
 print([backend.name for backend in available_backends])
 backend = provider.get_backend('ibmq_qasm_simulator') 
+service = QiskitRuntimeService(channel="ibm_quantum")
+backend = service.backend("ibmq_qasm_simulator")
 noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
 service = QiskitRuntimeService(channel="ibm_quantum")
-
 fake_backend = FakeKolkata()
 noise_model = NoiseModel.from_backend(fake_backend)
 options = Options()
@@ -210,14 +210,54 @@ options.simulator = {
 options.execution.shots = 1000
 options.optimization_level = 0
 options.resilience_level = 0
-
 with Session(service=service, backend=backend):
     sampler = Sampler(options=options)
     qaoa = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+    result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
+    print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+    print('best measurement', result1.best_measurement)
 
-result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
-print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
-print('best measurement', result1.best_measurement)
+
+
+# # provider = IBMProvider()
+# # available_backends = provider.backends()
+# # print([backend.name for backend in available_backends])
+# # backend = provider.get_backend('ibmq_qasm_simulator') 
+# service = QiskitRuntimeService(channel="ibm_quantum", token="25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4")
+# backend = service.backend("ibmq_qasm_simulator")
+
+# device_backend = FakeVigo()
+# coupling_map = device_backend.configuration().coupling_map
+# # simulator = Aer.get_backend('qasm_simulator')
+# noise_model = NoiseModel.from_backend(device_backend)
+# print(noise_model)
+
+
+# simulator = AerSimulator(noise_model = noise_model)
+
+# # fake_backend = FakeKolkata()
+# # noise_model = NoiseModel.from_backend(fake_backend)
+# # options = Options()
+# # options.simulator = {
+# #     "noise_model": noise_model,
+# #     "basis_gates": fake_backend.configuration().basis_gates,
+# #     "coupling_map": fake_backend.configuration().coupling_map,
+# #     "seed_simulator": 42
+# # }
+# # options.execution.shots = 1000
+# # options.optimization_level = 0
+# # options.resilience_level = 0
+
+# # with Session(service=service, backend=backend):
+# #     sampler = Sampler(options=options)
+# #     qaoa = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+# #     result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
+
+# sampler = Sampler(simulator)
+# qaoa = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+# result1 = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
+# print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+# print('best measurement', result1.best_measurement)
 
 
 ## Creation and Annihilation operators Hamiltonian

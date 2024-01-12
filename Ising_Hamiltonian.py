@@ -18,7 +18,7 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction
-pose = pyrosetta.pose_from_pdb("2res.pdb")
+pose = pyrosetta.pose_from_pdb("Input Files/2res.pdb")
 
 
 residue_count = pose.total_residue()
@@ -65,8 +65,8 @@ Hamiltonian = np.zeros((max_rotamers, max_rotamers))
 E1 = np.zeros((max_rotamers, max_rotamers))
 Hamiltonian1 = np.zeros((max_rotamers, max_rotamers))
 
-output_file = "two_body_terms.csv"
-output_file1 = "one_body_terms.csv"
+output_file = "Energy Files/two_body_terms.csv"
+output_file1 = "Energy Files/one_body_terms.csv"
 data_list = []
 data_list1 = []
 df = pd.DataFrame(columns=['res i', 'res j', 'rot A_i', 'rot B_j', 'E_ij'])
@@ -119,7 +119,7 @@ for residue_number in range(1, residue_count):
 
 # Save the two-body energies to a csv file
 df = pd.DataFrame(data_list)
-df.to_csv('two_body_terms.csv', index=False)
+df.to_csv('Energy Files/two_body_terms.csv', index=False)
 
 # to choose the two rotamers with the largest energy in absolute value
 # df.assign(abs_E=df['E_ij'].abs()).nlargest(2, 'abs_E').drop(columns=['abs_E']).to_csv('two_body_terms.csv', index=False)
@@ -145,7 +145,7 @@ for residue_number in range(1, residue_count + 1):
 
 # Save the one-body energies to a csv file
 df1 = pd.DataFrame(data_list1)
-df1.to_csv('one_body_terms.csv', index=False)
+df1.to_csv('Energy Files/one_body_terms.csv', index=False)
 # to choose the two rotamers with the largest energy in absolute value
 # df1.assign(abs_Ei=df1['E_ii'].abs()).nlargest(2, 'abs_Ei').drop(columns=['abs_Ei']).to_csv('one_body_terms.csv', index=False)
 

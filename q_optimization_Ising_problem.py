@@ -10,14 +10,14 @@ from copy import deepcopy
 num_rot = 2
 
 ## configure the hamiltonian from the values calculated classically with pyrosetta
-df1 = pd.read_csv("Energy Files/one_body_terms.csv")
+df1 = pd.read_csv("energy_files/one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
 N = int(num/num_rot)
 
 print('Qii values: \n', q)
 
-df = pd.read_csv("Energy Files/two_body_terms.csv")
+df = pd.read_csv("energy_files/two_body_terms.csv")
 value = df['E_ij'].values
 Q = np.zeros((num,num))
 n = 0

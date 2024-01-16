@@ -7,12 +7,12 @@ import cmath
 
 num_rot = 2
 
-df1 = pd.read_csv("one_body_terms.csv")
+df1 = pd.read_csv("energy_files/one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
 N_res = int(num/num_rot)
 
-df = pd.read_csv("two_body_terms.csv")
+df = pd.read_csv("energy_files/two_body_terms.csv")
 v = df['E_ij'].values
 numm = len(v)
 Q = np.zeros((num,num))

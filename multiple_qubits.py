@@ -160,12 +160,50 @@ def X_op(i, num):
     return SparsePauliOp(Pauli(''.join(op_list)))
 
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-p = 10
+p = 1
 initial_point = np.ones(2*p)
-qaoa1 = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result_gen = qaoa1.compute_minimum_eigenvalue(H_gen)
+qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 print(result_gen)
+
+from qiskit_aer.noise import NoiseModel
+from qiskit_ibm_provider import IBMProvider
+from qiskit_aer import AerSimulator
+from qiskit.providers.fake_provider import FakeKolkata, FakeVigo
+from qiskit_ibm_runtime import QiskitRuntimeService, Options, Session, Sampler
+
+IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
+provider = IBMProvider()
+available_backends = provider.backends()
+print([backend.name for backend in available_backends])
+service = QiskitRuntimeService(channel="ibm_quantum")
+backend = service.backend("ibmq_qasm_simulator")
+noise_model = NoiseModel.from_backend(backend)
+simulator = AerSimulator(noise_model = noise_model)
+fake_backend = FakeKolkata()
+noise_model = NoiseModel.from_backend(fake_backend)
+options = Options()
+options.simulator = {
+    "noise_model": noise_model,
+    "basis_gates": fake_backend.configuration().basis_gates,
+    "coupling_map": fake_backend.configuration().coupling_map,
+    "seed_simulator": 42
+}
+options.execution.shots = 1000
+options.optimization_level = 0
+options.resilience_level = 0
+
+with Session(service=service, backend=backend):
+    sampler = Sampler(options=options)
+    qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+    result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+
+print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+print('best measurement', result1.best_measurement)
+print('Optimal parameters: ', result1.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+
 

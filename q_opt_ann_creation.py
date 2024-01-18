@@ -168,6 +168,7 @@ qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initi
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+print('Optimal parameters: ', result.optimal_parameters)
 
 k = 0
 for i in range(num):

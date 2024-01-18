@@ -162,12 +162,21 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 
 mixer_op = sum(X_op(i,num) for i in range(num))
 
-p = 10  # Number of QAOA layers
+p = 1  # Number of QAOA layers
 initial_point = np.ones(2 * p)
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+print('Optimal parameters: ', result.optimal_parameters)
+
+# from qiskit_optimization.applications import max_cut
+# optimal_params = result.optimal_parameters
+# graph = [(0, 1, 1.0), (1, 2, 1.0), (2, 3, 1.0), (3, 0, 1.0)]
+# qubit_op, offset = max_cut.get_operator(graph)
+# circuit = qaoa.construct_circuit(optimal_params, qubit_op).decompose()
+# depth = circuit.depth()
+# print("Depth of the QAOA circuit:", depth)
 
 k = 0
 for i in range(num):
@@ -215,6 +224,8 @@ with Session(service=service, backend=backend):
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
+print('Optimal parameters: ', result1.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']) + N_res*P + k)
 
 
 
@@ -315,14 +326,16 @@ for i in range(N_res-1):
 H_gen = H_int + H_self
 
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-p = 10
+p = 1
 initial_point = np.ones(2*p)
 qaoa1 = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result_gen = qaoa1.compute_minimum_eigenvalue(H_gen)
 print("\nThe result of the quantum optimisation using QAOA with the number operators is: \n")
 print('best measurement', result_gen.best_measurement)
+print("Optimal parameters: ", qaoa1.optimal_params)
 print('\nThe ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']), '\n')
 print(result_gen)
+
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()
@@ -348,8 +361,10 @@ options.resilience_level = 0
 with Session(service=service, backend=backend):
     sampler = Sampler(options=options)
     qaoa2 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-    result2 = qaoa.compute_minimum_eigenvalue(H_gen)
+    result2 = qaoa2.compute_minimum_eigenvalue(H_gen)
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA with number operators is: \n")
 print('best measurement', result2.best_measurement)
+print('Optimal parameters: ', result2.optimal_parameters)
+print('The ground state energy with noisy QAOA number operators is: ', np.real(result2.best_measurement['value']) + N_res*P + k)
 

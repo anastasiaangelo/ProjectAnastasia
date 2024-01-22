@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-import csv
 import matplotlib.pyplot as plt
-from copy import deepcopy
-import cmath
+import itertools
+import functools
+import operator
+
 
 qubit_per_res = 2
 num_rot = 2**qubit_per_res
@@ -20,10 +21,7 @@ numm = len(v)
 
 print("q: \n", q)
 
-## Classical optimisation:
-from scipy.sparse.linalg import eigsh
-from scipy.linalg import eig
-
+num_qubits = N_res * qubit_per_res
 
 ## Quantum optimisation
 from qiskit import Aer, QuantumCircuit
@@ -31,73 +29,6 @@ from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
-
-## Creation and Annihilation operators Hamiltonian
-num_qubits = N_res * qubit_per_res
-
-## Classically
-
-H_s = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
-H_i = np.zeros((2**num_qubits, 2**num_qubits), dtype=complex)
-
-X = np.array([[0, 1], [1, 0]])
-Y = np.array([[0, -1j], [1j, 0]])
-
-a = 0.5*(X + 1j*Y)
-a_dagger = 0.5 *(X - 1j*Y) 
-
-identity = np.eye(2)
-
-aad = a@a_dagger
-ada = a_dagger@a
-
-def extended_operator(n, qubit, op):
-    ops = [identity if i != qubit else op for i in range(n)]
-    extended_op = ops[0]
-    for op in ops[1:]:
-        extended_op = np.kron(extended_op, op)
-    return extended_op
-
-
-s = 0        
-for i in range(0, num_qubits, qubit_per_res):
-    aad_extended = extended_operator(num_qubits, i, aad)
-    ada_extended = extended_operator(num_qubits, i, ada)
-    aad_extended1 = extended_operator(num_qubits, i+1, aad)
-    ada_extended1 = extended_operator(num_qubits, i+1, ada)
-    H_s += q[s] * aad_extended @ aad_extended1 + q[s+1] * aad_extended @ ada_extended1 + q[s+2] * ada_extended @ aad_extended1 + q[s+3] * ada_extended @ ada_extended1
-    s += num_rot
-    if s >= num:
-        break
-
-k = 0
-for i in range(0, num_qubits, qubit_per_res):
-    for j in range(qubit_per_res, num_qubits, qubit_per_res):
-        aad_extended = extended_operator(num_qubits, i, aad)
-        ada_extended = extended_operator(num_qubits, i, ada)
-        aad_extended1 = extended_operator(num_qubits, i+1, aad)
-        ada_extended1 = extended_operator(num_qubits, i+1, ada)
-        aad_extendedj = extended_operator(num_qubits, j, aad)
-        ada_extendedj = extended_operator(num_qubits, j, ada)
-        aad_extendedj1 = extended_operator(num_qubits, j+1, aad)
-        ada_extendedj1 = extended_operator(num_qubits, j+1, ada)
-        if k >= numm:
-            break
-        H_i += v[k] * aad_extended @ aad_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+1] * aad_extended @ aad_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+2] * aad_extended @ aad_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+3] * aad_extended @ aad_extended1 @ ada_extendedj @ ada_extendedj1 + \
-                v[k+4] * aad_extended @ ada_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+5] * aad_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1 + v[k+6] * aad_extended @ ada_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+7] * aad_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1 + \
-                v[k+8] * ada_extended @ aad_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+9] * ada_extended @ aad_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+10] * ada_extended @ aad_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+11] * ada_extended @ aad_extended1 @ ada_extendedj @ ada_extendedj1 + \
-                v[k+12] * ada_extended @ ada_extended1 @ aad_extendedj @ aad_extendedj1 + v[k+13] * ada_extended @ ada_extended1 @ aad_extendedj @ ada_extendedj1 + v[k+14] * ada_extended @ ada_extended1 @ ada_extendedj @ aad_extendedj1 + v[k+15] * ada_extended @ ada_extended1 @ ada_extendedj @ ada_extendedj1
-
-        k += num_rot**2
-    
-H_tt = H_i + H_s 
-
-eigenvalue, eigenvector = eigsh(H_tt, k=num_qubits, which='SA')
-print('\nThe ground state with the number operator classically is: ', eigenvalue[0])
-
-ground_state= eig(H_tt)
-print('eig result:', ground_state)
-
 
 ## Mapping to qubits
 # for 2 qubits per residue, 4 rotamers per residue
@@ -118,38 +49,33 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
+def generate_n_operators(start_qubit, qubit_per_res, num_qubits):
+    n_operators = []
+    for qubit in range(start_qubit, start_qubit + qubit_per_res):
+        n_operators.append(N_0(qubit, num_qubits))
+        n_operators.append(N_1(qubit, num_qubits))
+    return n_operators
 
 i = 0 #each loop is one residue
 for j in range(0, num_qubits, qubit_per_res):
-    N_0i = N_0(j, num_qubits)
-    N_1i = N_1(j, num_qubits)
-    N_0j = N_0(j+1, num_qubits)
-    N_1j = N_1(j+1, num_qubits)
-    H_self += q[i] * N_0i @ N_0j + q[i+1] * N_0i @ N_1j + q[i+2] * N_1i @ N_0j + q[i+3] * N_1i @ N_1j 
-    i += num_rot
-    if i >= num:
-        break
+    n_ops = generate_n_operators(j, qubit_per_res, num_qubits)
+    for comb in itertools.product(*[n_ops]):
+        H_self += q[i] * functools.reduce(operator.matmul, comb)
+        i += 1
+        if i >= num:
+            break
 
 
 i = 0     #one loop is one pair of residues
 for j in range(0, num_qubits, qubit_per_res):
-    for k in range(qubit_per_res, num_qubits, qubit_per_res):
-        N_0i = N_0(j, num_qubits)
-        N_1i = N_1(j, num_qubits)
-        N_0ii = N_0(j+1, num_qubits)
-        N_1ii = N_1(j+1, num_qubits)
-        N_0j = N_0(k, num_qubits)
-        N_1j = N_1(k, num_qubits)
-        N_0jj = N_0(k+1, num_qubits)
-        N_1jj = N_1(k+1, num_qubits)
-        if i >= numm:
-            break
-        H_int += v[i] * N_0i @ N_0ii @ N_0j @ N_0jj + v[i+1] * N_0i @ N_0ii @ N_0j @ N_1jj + v[i+2] * N_0i @ N_0ii @ N_1j @ N_0jj + v[i+3] * N_0i @ N_0ii @ N_1j @ N_1jj + \
-                + v[i+4] * N_0i @ N_1ii @ N_0j @ N_0jj + v[i+5] * N_0i @ N_1ii @ N_1j @ N_1jj + v[i+6] * N_0i @ N_1ii @ N_1j @ N_0jj + + v[i+7] * N_0i @ N_1ii @ N_1j @ N_1jj + \
-                + v[i+8] * N_1i @ N_0ii @ N_0j @ N_0jj + v[i+9] * N_1i @ N_0ii @ N_0j @ N_1jj + v[i+10] * N_1i @ N_0ii @ N_1j @ N_0jj + v[i+11] * N_1i @ N_0ii @ N_1j @ N_1jj + \
-                + v[i+12] * N_1i @ N_1ii @ N_0j @ N_0jj + v[i+13] * N_1i @ N_1ii @ N_0j @ N_1jj + v[i+14] * N_1i @ N_1ii @ N_1j @ N_0jj + v[i+15] * N_1i @ N_1ii @ N_1j @ N_1jj 
-        
-        i += num_rot**2
+    for k in range(j + qubit_per_res, num_qubits, qubit_per_res):
+        n_ops_j = generate_n_operators(j, qubit_per_res, num_qubits)
+        n_ops_k = generate_n_operators(k, qubit_per_res, num_qubits)
+        for comb in itertools.product(*[n_ops_j, n_ops_k]):
+            H_int += v[i] * functools.reduce(operator.matmul, comb)
+            i += 1
+            if i >= numm:
+                break
     
 
 H_gen = H_int + H_self
@@ -205,5 +131,7 @@ print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+print(result1)
 
+print('Energy check: ',)
 

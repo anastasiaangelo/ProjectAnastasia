@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import itertools
 import functools
 import operator
+from itertools import combinations
 
 
 qubit_per_res = 2
 num_rot = 2**qubit_per_res
-
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
 q = df1['E_ii'].values
@@ -24,14 +24,13 @@ print("q: \n", q)
 num_qubits = N_res * qubit_per_res
 
 ## Quantum optimisation
-from qiskit import Aer, QuantumCircuit
+from qiskit import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
-from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
+from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
 
 ## Mapping to qubits
-# for 2 qubits per residue, 4 rotamers per residue
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
 H_int = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0]) 
 
@@ -49,36 +48,54 @@ def N_1(i, n):
     i_op = SparsePauliOp(Pauli('I'*n), coeffs=[0.5])
     return z_op + i_op
 
-def generate_n_operators(start_qubit, qubit_per_res, num_qubits):
-    n_operators = []
-    for qubit in range(start_qubit, start_qubit + qubit_per_res):
-        n_operators.append(N_0(qubit, num_qubits))
-        n_operators.append(N_1(qubit, num_qubits))
-    return n_operators
 
-i = 0 #each loop is one residue
-for j in range(0, num_qubits, qubit_per_res):
-    n_ops = generate_n_operators(j, qubit_per_res, num_qubits)
-    print('operators: ', n_ops)
-    for comb in itertools.product(*[n_ops]):
-        H_self += q[i] * functools.reduce(operator.matmul, comb)
-        print('hamiltoanian: ', H_self)
-        i += 1
-        if i >= num:
+def create_pauli_operators(num_qubits, qubits_per_res):
+    operators = []
+    for i in range(0, num_qubits, qubits_per_res):
+        # Generate all combinations of N_0 and N_1 for the residue
+        for comb in itertools.product([N_0, N_1], repeat=qubits_per_res):
+            ops = [func(j, num_qubits) for j, func in enumerate(comb, start=i)]
+            # Now you have a list of operators for each qubit in the residue
+            full_op = functools.reduce(operator.matmul, ops)
+            operators.append(full_op)
+    return operators
+
+for i, op in enumerate(create_pauli_operators(num_qubits, qubit_per_res)):
+    H_self += q[i] * op
+    print('hamiltonian: ', H_self)
+    if i >= len(q) - 1:
+        break
+
+def create_interaction_operators(num_qubits, qubits_per_res, v):
+    H_int = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
+    v_index = 0
+    
+    # Iterate over all unique pairs of residues
+    for res1, res2 in combinations(range(0, num_qubits, qubits_per_res), 2):
+        # Generate all combinations of N_0 and N_1 for each qubit in the residue
+        for comb1 in itertools.product([N_0, N_1], repeat=qubits_per_res):
+            for comb2 in itertools.product([N_0, N_1], repeat=qubits_per_res):
+                op_list1 = [func(i + res1, num_qubits) for i, func in enumerate(comb1)]
+                op_list2 = [func(j + res2, num_qubits) for j, func in enumerate(comb2)]
+                
+                # Now you have two lists of operators, one for each residue in the pair
+                full_op1 = functools.reduce(operator.matmul, op_list1)
+                full_op2 = functools.reduce(operator.matmul, op_list2)
+                
+                H_int += v[v_index] * full_op1 @ full_op2
+                v_index += 1
+                
+                if v_index >= len(v) - 1:
+                    break
+            if v_index >= len(v) - 1:
+                break
+        if v_index >= len(v) - 1:
             break
 
+    return H_int
 
-i = 0     #one loop is one pair of residues
-for j in range(0, num_qubits, qubit_per_res):
-    for k in range(j + qubit_per_res, num_qubits, qubit_per_res):
-        n_ops_j = generate_n_operators(j, qubit_per_res, num_qubits)
-        n_ops_k = generate_n_operators(k, qubit_per_res, num_qubits)
-        for comb in itertools.product(*[n_ops_j, n_ops_k]):
-            H_int += v[i] * functools.reduce(operator.matmul, comb)
-            i += 1
-            if i >= numm:
-                break
-    
+H_int = create_interaction_operators(num_qubits, qubit_per_res, v)
+
 
 H_gen = H_int + H_self
 
@@ -96,6 +113,7 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 print(result_gen)
+
 
 from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_provider import IBMProvider

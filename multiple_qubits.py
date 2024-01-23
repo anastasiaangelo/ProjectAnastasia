@@ -59,8 +59,10 @@ def generate_n_operators(start_qubit, qubit_per_res, num_qubits):
 i = 0 #each loop is one residue
 for j in range(0, num_qubits, qubit_per_res):
     n_ops = generate_n_operators(j, qubit_per_res, num_qubits)
+    print('operators: ', n_ops)
     for comb in itertools.product(*[n_ops]):
         H_self += q[i] * functools.reduce(operator.matmul, comb)
+        print('hamiltoanian: ', H_self)
         i += 1
         if i >= num:
             break
@@ -133,5 +135,5 @@ print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 print(result1)
 
-print('Energy check: ',)
+
 

@@ -200,6 +200,7 @@ with Session(service=service, backend=backend):
     sampler = Sampler(options=options)
     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
     result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+    print('Running noisy simulation..')
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
@@ -207,5 +208,4 @@ print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 print(result1)
 
-print('Energy check: ',)
 

@@ -29,7 +29,7 @@ from qiskit import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
-from qiskit.primitives import Sampler
+from qiskit_aer.primitives import Sampler
 
 ## Mapping to qubits
 H_self = SparsePauliOp(Pauli('I'* num_qubits), coeffs=[0])
@@ -119,25 +119,58 @@ histogram = plot_histogram(counts, title="QAOA Measurement Results")
 histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
 
 
-from qiskit_aer.noise import NoiseModel, depolarizing_error, thermal_relaxation_error
+from qiskit_aer.noise import NoiseModel, depolarizing_error, thermal_relaxation_error, QuantumError, pauli_error
 from qiskit.utils import QuantumInstance
 from qiskit_aer import AerSimulator
+from qiskit.quantum_info import Kraus
+from qiskit_aer.primitives import Sampler
+from qiskit.primitives import Sampler
 
 backend = Aer.get_backend('qasm_simulator')
 noise_model = NoiseModel()
-p_error_1q = 0.05  # Single-qubit error probability
-p_error_2q = 0.1   # Two-qubit error probability (this can be different)
+prob_x = 0.05  # Probability for X error
+prob_sx = 0.02  # Probability for SX error
 
-# Create depolarizing error for single-qubit and two-qubit gates
-depolarizing_error_1q = depolarizing_error(p_error_1q, 1)
-depolarizing_error_2q = depolarizing_error(p_error_2q, 2)
+# Create quantum errors
+error_ops = [np.sqrt(1 - prob_sx) * np.eye(2), np.sqrt(prob_sx) * Pauli('X').to_matrix()]
 
-# Add errors to noise model
-noise_model.add_all_qubit_quantum_error(depolarizing_error_1q, ['u1', 'u2', 'u3'])
-noise_model.add_all_qubit_quantum_error(depolarizing_error_2q, ['cx'])
+error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
+# error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
+error_sx = QuantumError(Kraus(error_ops))
 
-noisy_simulator = AerSimulator(noise_model = noise_model)
-noisy_sampler = Sampler(noisy_simulator)
+# Create a new noise model
+new_noise_model = NoiseModel()
+
+# Add quantum errors to the noise model for specific gates
+new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
+new_noise_model.add_quantum_error(error_sx, 'sx', [1])
+
+# p_error_1q = 0.05  # Single-qubit error probability
+# p_error_2q = 0.1   # Two-qubit error probability (this can be different)
+
+# # Create depolarizing error for single-qubit and two-qubit gates
+# depolarizing_error_1q = depolarizing_error(p_error_1q, 1)
+# depolarizing_error_2q = depolarizing_error(p_error_2q, 2)
+
+# # Add errors to noise model
+# noise_model.add_all_qubit_quantum_error(depolarizing_error_1q, ['u1', 'u2', 'u3'])
+# noise_model.add_all_qubit_quantum_error(depolarizing_error_2q, ['cx'])
+
+noisy_sampler = Sampler()
+
+options = Options()
+options.simulator = {
+    "noise_model": new_noise_model,
+    "basis_gates": backend.configuration().basis_gates,
+    "coupling_map": backend.configuration().coupling_map,
+    "seed_simulator": 42
+}
+options.execution.shots = 1000
+options.optimization_level = 0
+options.resilience_level = 0
+
+noisy_sampler = Sampler(options=options)
+
 
 qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result1 = qaoa1.compute_minimum_eigenvalue(H_gen)

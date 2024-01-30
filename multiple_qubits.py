@@ -5,9 +5,10 @@ import itertools
 import functools
 import operator
 from itertools import combinations
+from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 2
+qubit_per_res = 3
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -62,7 +63,6 @@ def create_pauli_operators(num_qubits, qubits_per_res):
 
 for i, op in enumerate(create_pauli_operators(num_qubits, qubit_per_res)):
     H_self += q[i] * op
-    print('hamiltonian: ', H_self)
     if i >= len(q) - 1:
         break
 
@@ -114,12 +114,17 @@ print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 print(result_gen)
 
+counts = result_gen.best_measurement
+histogram = plot_histogram(counts, title="QAOA Measurement Results")
+histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
 
-from qiskit_aer.noise import NoiseModel
+
+from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
 from qiskit.providers.fake_provider import FakeKolkata, FakeVigo
 from qiskit_ibm_runtime import QiskitRuntimeService, Options, Session, Sampler
+from qiskit.quantum_info import Kraus
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()
@@ -131,9 +136,27 @@ noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
 fake_backend = FakeKolkata()
 noise_model = NoiseModel.from_backend(fake_backend)
+print('Noise model', noise_model)
+
+prob_x = 0.05  # Probability for X error
+prob_sx = 0.02  # Probability for SX error
+
+# Create quantum errors
+error_ops = [np.sqrt(1 - prob_sx) * np.eye(2), np.sqrt(prob_sx) * Pauli('X').to_matrix()]
+
+error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
+# error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
+error_sx = QuantumError(Kraus(error_ops))
+
+# Create a new noise model
+new_noise_model = NoiseModel()
+
+# Add quantum errors to the noise model for specific gates
+new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
+new_noise_model.add_quantum_error(error_sx, 'sx', [1])
 options = Options()
 options.simulator = {
-    "noise_model": noise_model,
+    "noise_model": new_noise_model,
     "basis_gates": fake_backend.configuration().basis_gates,
     "coupling_map": fake_backend.configuration().coupling_map,
     "seed_simulator": 42
@@ -146,6 +169,7 @@ with Session(service=service, backend=backend):
     sampler = Sampler(options=options)
     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
     result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+    print('Running noisy simulation..')
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)

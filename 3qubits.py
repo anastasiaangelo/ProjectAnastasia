@@ -27,6 +27,7 @@ from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
+from qiskit.visualization import plot_histogram
 
 ## Mapping to qubits
 # for 3 qubits per residue, 4 rotamers per residue
@@ -93,6 +94,29 @@ for j in range(0, num_qubits, qubit_per_res):
 
 H_gen = H_int + H_self
 
+# # Visualisation of hamiltonian terms
+# # Extract coefficients and terms from the Hamiltonian
+# coefficients = []
+# terms = []
+
+# for term, coeff in zip(H_gen.paulis, H_gen.coeffs):
+#     coefficients.append(coeff)
+#     terms.append(str(term))
+
+# # Shorten the list for visualization (if needed)
+# # You might need to do this if the number of terms is very large
+# coefficients = coefficients[:250]  # adjust this number as needed
+# terms = terms[:250]  # adjust this number as needed
+
+
+# plt.figure(figsize=(10,6))
+# plt.bar(terms, coefficients)
+# plt.xlabel('Terms')
+# plt.ylabel('Coefficients')
+# plt.xticks(rotation=90)
+# plt.title('Coefficients of Hamiltonian Terms')
+# plt.show()
+
 def X_op(i, num):
     op_list = ['I'] * num
     op_list[i] = 'X'
@@ -107,6 +131,9 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 print(result_gen)
+
+counts = result_gen.best_measurement
+plot_histogram(counts, title="QAOA Measurement Results")
 
 from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_provider import IBMProvider
@@ -139,6 +166,7 @@ with Session(service=service, backend=backend):
     sampler = Sampler(options=options)
     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
     result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+    print('Running noisy simulation..')
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)

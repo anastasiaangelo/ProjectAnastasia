@@ -8,7 +8,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 3
+qubit_per_res = 4
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -112,7 +112,6 @@ result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
-print(result_gen)
 
 counts = result_gen.best_measurement
 histogram = plot_histogram(counts, title="QAOA Measurement Results")
@@ -124,7 +123,8 @@ from qiskit.utils import QuantumInstance
 from qiskit_aer import AerSimulator
 from qiskit.quantum_info import Kraus
 from qiskit_aer.primitives import Sampler
-from qiskit.primitives import Sampler
+from qiskit.primitives import Sampler, BackendSampler
+from qiskit.transpiler import PassManager
 
 backend = Aer.get_backend('qasm_simulator')
 noise_model = NoiseModel()
@@ -145,31 +145,14 @@ new_noise_model = NoiseModel()
 new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
 new_noise_model.add_quantum_error(error_sx, 'sx', [1])
 
-# p_error_1q = 0.05  # Single-qubit error probability
-# p_error_2q = 0.1   # Two-qubit error probability (this can be different)
-
-# # Create depolarizing error for single-qubit and two-qubit gates
-# depolarizing_error_1q = depolarizing_error(p_error_1q, 1)
-# depolarizing_error_2q = depolarizing_error(p_error_2q, 2)
-
-# # Add errors to noise model
-# noise_model.add_all_qubit_quantum_error(depolarizing_error_1q, ['u1', 'u2', 'u3'])
-# noise_model.add_all_qubit_quantum_error(depolarizing_error_2q, ['cx'])
-
-noisy_sampler = Sampler()
-
-options = Options()
-options.simulator = {
-    "noise_model": new_noise_model,
+options = {
+     "noise_model": new_noise_model,
     "basis_gates": backend.configuration().basis_gates,
     "coupling_map": backend.configuration().coupling_map,
     "seed_simulator": 42
 }
-options.execution.shots = 1000
-options.optimization_level = 0
-options.resilience_level = 0
 
-noisy_sampler = Sampler(options=options)
+noisy_sampler = BackendSampler(backend=backend, options=options, bound_pass_manager=PassManager())
 
 
 qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
@@ -179,4 +162,3 @@ print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
-print(result1)

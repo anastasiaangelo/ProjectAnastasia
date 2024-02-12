@@ -125,6 +125,7 @@ from qiskit.quantum_info import Kraus
 from qiskit_aer.primitives import Sampler
 from qiskit.primitives import Sampler, BackendSampler
 from qiskit.transpiler import PassManager
+from qiskit_ibm_runtime import Options
 
 backend = Aer.get_backend('qasm_simulator')
 noise_model = NoiseModel()
@@ -145,15 +146,15 @@ new_noise_model = NoiseModel()
 new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
 new_noise_model.add_quantum_error(error_sx, 'sx', [1])
 
-options = {
-     "noise_model": new_noise_model,
+options= {
+    "noise_model": new_noise_model,
     "basis_gates": backend.configuration().basis_gates,
     "coupling_map": backend.configuration().coupling_map,
-    "seed_simulator": 42
+    "seed_simulator": 42,
+    "shots": 1000,
+    "optimization_level": 0,
+    "resilience_level": 0
 }
-options.execution.shots = 1000
-options.optimization_level = 0
-options.resilience_level = 0
 
 noisy_sampler = BackendSampler(backend=backend, options=options, bound_pass_manager=PassManager())
 

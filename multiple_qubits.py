@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import itertools
 import functools
 import operator
@@ -8,7 +7,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 3
+qubit_per_res = 2
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -112,7 +111,7 @@ result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
-print(result_gen)
+print('Time taken: ', result_gen['optimizer_time'])
 
 counts = result_gen.best_measurement
 histogram = plot_histogram(counts, title="QAOA Measurement Results")
@@ -122,7 +121,7 @@ histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
 from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
-from qiskit.providers.fake_provider import FakeKolkata, FakeVigo
+from qiskit.providers.fake_provider import FakeCairo
 from qiskit_ibm_runtime import QiskitRuntimeService, Options, Session, Sampler
 from qiskit.quantum_info import Kraus
 
@@ -134,7 +133,7 @@ service = QiskitRuntimeService(channel="ibm_quantum")
 backend = service.backend("ibmq_qasm_simulator")
 noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
-fake_backend = FakeKolkata()
+fake_backend = FakeCairo()
 noise_model = NoiseModel.from_backend(fake_backend)
 print('Noise model', noise_model)
 
@@ -175,7 +174,5 @@ print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
-print(result1)
-
-
+print('Time taken: ', result1['optimizer_t'])
 

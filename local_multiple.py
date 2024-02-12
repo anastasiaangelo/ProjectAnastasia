@@ -8,7 +8,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 4
+qubit_per_res = 2
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -151,9 +151,11 @@ options = {
     "coupling_map": backend.configuration().coupling_map,
     "seed_simulator": 42
 }
+options.execution.shots = 1000
+options.optimization_level = 0
+options.resilience_level = 0
 
 noisy_sampler = BackendSampler(backend=backend, options=options, bound_pass_manager=PassManager())
-
 
 qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result1 = qaoa1.compute_minimum_eigenvalue(H_gen)

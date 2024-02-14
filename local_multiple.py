@@ -8,7 +8,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 2
+qubit_per_res = 5
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -118,14 +118,11 @@ histogram = plot_histogram(counts, title="QAOA Measurement Results")
 histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
 
 
-from qiskit_aer.noise import NoiseModel, depolarizing_error, thermal_relaxation_error, QuantumError, pauli_error
-from qiskit.utils import QuantumInstance
-from qiskit_aer import AerSimulator
+from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
 from qiskit.quantum_info import Kraus
 from qiskit_aer.primitives import Sampler
 from qiskit.primitives import Sampler, BackendSampler
 from qiskit.transpiler import PassManager
-from qiskit_ibm_runtime import Options
 
 backend = Aer.get_backend('qasm_simulator')
 noise_model = NoiseModel()

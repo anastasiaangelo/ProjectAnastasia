@@ -111,7 +111,6 @@ result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
-print('Time taken: ', result_gen['optimizer_time'])
 
 counts = result_gen.best_measurement
 histogram = plot_histogram(counts, title="QAOA Measurement Results")
@@ -174,5 +173,5 @@ print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
-print('Time taken: ', result1['optimizer_t'])
+
 

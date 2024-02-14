@@ -8,7 +8,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 2
+qubit_per_res = 3
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -90,8 +90,8 @@ def create_interaction_operators(num_qubits, qubits_per_res, v):
 
     return H_int
 
-H_int = create_interaction_operators(num_qubits, qubit_per_res, v)
 
+H_int = create_interaction_operators(num_qubits, qubit_per_res, v)
 
 H_gen = H_int + H_self
 
@@ -109,7 +109,6 @@ result_gen = qaoa.compute_minimum_eigenvalue(H_gen)
 print("\n\nThe result of the quantum optimisation using QAOA without CVar is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
-
 
 counts = result_gen.best_measurement
 histogram = plot_histogram(counts, title="QAOA Measurement Results")
@@ -165,7 +164,7 @@ alphas = [1.0, 0.50, 0.25, 0.125, 0.05, 0.025, 0.005]
 objectives = {alpha: [] for alpha in alphas}
 results = {}
 
-print("\n\nThe result of the CVaR QAOA Optimisation is: \n")
+print("\n\nThe result of the CVaR QAOA  noisy Optimisation is: \n")
 
 for alpha in alphas:
 

@@ -114,7 +114,7 @@ print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurem
 
 
 from qiskit_ibm_provider import IBMProvider
-from qiskit_ibm_runtime import QiskitRuntimeService, Options, Session, Sampler
+from qiskit_ibm_runtime import QiskitRuntimeService, Sampler
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')

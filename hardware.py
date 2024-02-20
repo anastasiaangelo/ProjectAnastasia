@@ -114,19 +114,22 @@ print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurem
 
 
 from qiskit_ibm_provider import IBMProvider
-from qiskit_ibm_runtime import QiskitRuntimeService, Sampler
+from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
 service = QiskitRuntimeService(channel="ibm_quantum")
 backend = service.backend("ibm_torino")
+backend.configuration().default_rep_delay == 0.00001 #to speed up execution with dynamic repetition rate
 
 options = {
     "shots": 1000,
     "optimization_level": 3,
 }
 
-sampler = Sampler(backend=backend, options=options)
+#Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
+session = Session(backend=backend)
+sampler = Sampler(session=session, options=options)
 
 print('Running noisy simulation..')
 

@@ -7,7 +7,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 2
+qubit_per_res = 3
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -115,6 +115,9 @@ print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurem
 
 from qiskit_ibm_provider import IBMProvider
 from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
+from qiskit.primitives import BackendSampler
+from qiskit.transpiler import PassManager
+
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
@@ -124,17 +127,25 @@ backend.configuration().default_rep_delay == 0.00001 #to speed up execution with
 
 options = {
     "shots": 1000,
-    "optimization_level": 3,
+    "optimization_level": 3
 }
 
+
+with Session(service=service, backend=backend): 
+    sampler = BackendSampler(backend=backend, options=options, bound_pass_manager=PassManager())
+    print('Running noisy simulation..')
+    qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+    result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+
+
 #Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
-session = Session(backend=backend)
-sampler = Sampler(session=session, options=options)
+#session = Session(backend=backend)
+#sampler = Sampler(backend=backend, session=session, options=options)
+    
+# print('Running noisy simulation..')
 
-print('Running noisy simulation..')
-
-qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+# qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+# result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)

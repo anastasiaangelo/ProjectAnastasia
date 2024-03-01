@@ -8,7 +8,8 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 5
+qubit_per_res = 2
+
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -113,9 +114,9 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 
-counts = result_gen.best_measurement
-histogram = plot_histogram(counts, title="QAOA Measurement Results")
-histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
+# counts = result_gen.best_measurement
+# histogram = plot_histogram(counts, title="QAOA Measurement Results")
+# histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
 
 
 from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
@@ -136,15 +137,13 @@ error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
 # error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
 error_sx = QuantumError(Kraus(error_ops))
 
-# Create a new noise model
-new_noise_model = NoiseModel()
 
 # Add quantum errors to the noise model for specific gates
-new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
-new_noise_model.add_quantum_error(error_sx, 'sx', [1])
+noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
+noise_model.add_quantum_error(error_sx, 'sx', [1])
 
 options= {
-    "noise_model": new_noise_model,
+    "noise_model": noise_model,
     "basis_gates": backend.configuration().basis_gates,
     "coupling_map": backend.configuration().coupling_map,
     "seed_simulator": 42,

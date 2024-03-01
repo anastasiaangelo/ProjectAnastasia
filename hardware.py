@@ -118,7 +118,6 @@ from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
 from qiskit.primitives import BackendSampler
 from qiskit.transpiler import PassManager
 
-
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
 service = QiskitRuntimeService(channel="ibm_quantum")
@@ -130,22 +129,26 @@ options = {
     "optimization_level": 3
 }
 
-
-with Session(service=service, backend=backend): 
-    sampler = BackendSampler(backend=backend, options=options, bound_pass_manager=PassManager())
+with Session(service=service, backend=backend) as session: 
+    sampler = Sampler(backend=backend, session=session, options=options)
     print('Running noisy simulation..')
     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
     result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
 
 
-#Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
-#session = Session(backend=backend)
-#sampler = Sampler(backend=backend, session=session, options=options)
-    
+# # Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
+# session = Session(backend=backend)
+# sampler = Sampler(backend=backend, session=session, options=options)
+# qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+
+# # to check the 12 qubit issue
+# cobyla_optimizer = COBYLA(maxiter=1)    
+# sampler = Sampler(backend=backend, options=options)\\
 # print('Running noisy simulation..')
 
-# qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-# result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+# qaoa1 = QAOA(sampler=sampler, optimizer=cobyla_optimizer, reps=p, mixer=mixer_op, initial_point=initial_point)
+
+result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)

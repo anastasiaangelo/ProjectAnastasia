@@ -7,7 +7,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 2
+qubit_per_res = 3
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -132,31 +132,32 @@ service = QiskitRuntimeService(channel="ibm_quantum")
 backend = service.backend("ibmq_qasm_simulator")
 noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
-fake_backend = FakeCairo()
-noise_model = NoiseModel.from_backend(fake_backend)
+# fake_backend = FakeCairo()
+# noise_model = NoiseModel.from_backend(fake_backend)
 print('Noise model', noise_model)
 
-prob_x = 0.05  # Probability for X error
-prob_sx = 0.02  # Probability for SX error
+# prob_x = 0.05  # Probability for X error
+# prob_sx = 0.02  # Probability for SX error
 
-# Create quantum errors
-error_ops = [np.sqrt(1 - prob_sx) * np.eye(2), np.sqrt(prob_sx) * Pauli('X').to_matrix()]
+# # Create quantum errors
+# error_ops = [np.sqrt(1 - prob_sx) * np.eye(2), np.sqrt(prob_sx) * Pauli('X').to_matrix()]
 
-error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
-# error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
-error_sx = QuantumError(Kraus(error_ops))
+# error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
+# # error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
+# error_sx = QuantumError(Kraus(error_ops))
 
-# Create a new noise model
-new_noise_model = NoiseModel()
+# # Create a new noise model
+# new_noise_model = NoiseModel()
 
-# Add quantum errors to the noise model for specific gates
-new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
-new_noise_model.add_quantum_error(error_sx, 'sx', [1])
+# # Add quantum errors to the noise model for specific gates
+# new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
+# new_noise_model.add_quantum_error(error_sx, 'sx', [1])
+
 options = Options()
 options.simulator = {
-    "noise_model": new_noise_model,
-    "basis_gates": fake_backend.configuration().basis_gates,
-    "coupling_map": fake_backend.configuration().coupling_map,
+    "noise_model":  noise_model,
+    "basis_gates": backend.configuration().basis_gates,
+    "coupling_map": backend.configuration().coupling_map,
     "seed_simulator": 42
 }
 options.execution.shots = 1000

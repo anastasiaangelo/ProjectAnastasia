@@ -24,7 +24,6 @@ print("q: \n", q)
 num_qubits = N_res * qubit_per_res
 
 ## Quantum optimisation
-from qiskit import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
@@ -115,8 +114,6 @@ print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurem
 
 from qiskit_ibm_provider import IBMProvider
 from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
-from qiskit.primitives import BackendSampler
-from qiskit.transpiler import PassManager
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
@@ -129,17 +126,17 @@ options = {
     "optimization_level": 3
 }
 
-with Session(service=service, backend=backend) as session: 
-    sampler = Sampler(backend=backend, session=session, options=options)
-    print('Running noisy simulation..')
-    qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-    result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+# with Session(service=service, backend=backend) as session: 
+#     sampler = Sampler(backend=backend, session=session, options=options)
+#     print('Running noisy simulation..')
+#     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+#     result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
 
 
-# # Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
-# session = Session(backend=backend)
-# sampler = Sampler(backend=backend, session=session, options=options)
-# qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+# Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
+session = Session(backend=backend)
+sampler = Sampler(backend=backend, session=session, options=options)
+qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 
 # # to check the 12 qubit issue
 # cobyla_optimizer = COBYLA(maxiter=1)    
@@ -155,3 +152,26 @@ print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 
+# import pandas as pd
+
+# ideal_data = {
+#     'best_measurement': [str(result_gen.best_measurement)],
+#     'ground_state_energy': [np.real(result_gen.best_measurement['value'])]
+# }
+
+# noisy_data = {
+#     'best_measurement': [str(result1.best_measurement)],
+#     'optimal_parameters': [str(result1.optimal_parameters)],
+#     'ground_state_energy': [np.real(result1.best_measurement['value'])]
+# }
+
+# ideal_df = pd.DataFrame(ideal_data)
+# noisy_df = pd.DataFrame(noisy_data)
+
+# ideal_results_file = "/mnt/data/ideal_qaoa_results.csv"
+# noisy_results_file = "/mnt/data/noisy_qaoa_results.csv"
+
+# ideal_df.to_csv(ideal_results_file, index=False)
+# noisy_df.to_csv(noisy_results_file, index=False)
+
+# ideal_results_file, noisy_results_file

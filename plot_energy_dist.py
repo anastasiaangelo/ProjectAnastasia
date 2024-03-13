@@ -9,15 +9,15 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.patches import ConnectionPatch
 
-df = pd.read_csv('Energy Files/two_body_terms.csv')
+df = pd.read_csv('energy_files/two_body_terms.csv')
 two_energies = df['E_ij']
 
 print(df['E_ij'].describe())
 
 fig, ax = plt.subplots()
 
-sns.histplot(two_energies, kde=True) 
-plt.title('Filtered Two-Body Energy Distribution')
+sns.histplot(two_energies, kde=True, color='lightsteelblue', line_kws={'color': 'steelblue'}) 
+plt.title('Two-Body Energy Distribution')
 plt.xlabel('Energy')
 plt.ylabel('Frequency')
 
@@ -47,14 +47,16 @@ con2 = ConnectionPatch(xyA=xy2, xyB=xy2, coordsA=coordsA, coordsB=coordsB, axesA
 ax.add_artist(con1)
 ax.add_artist(con2)
 
-plt.show()
+plt.savefig('two_body_distribution.pdf', format='pdf', bbox_inches='tight')
+plt.clf()
 
 
-df1 = pd.read_csv('Energy Files/filtered_file_one.csv')
+df1 = pd.read_csv('energy_files/one_body_terms.csv')
 one_energies = df1['E_ii']
 
-sns.histplot(one_energies, kde=True) 
-plt.title('Filtered One-Body Energy Distribution')
+plt.figure()
+sns.histplot(one_energies, kde=True, color='lightsteelblue', line_kws={'color': 'steelblue'})
+plt.title('One-Body Energy Distribution')
 plt.xlabel('Energy')
 plt.ylabel('Frequency')
-plt.show()
+plt.savefig('one_body_distribution.pdf', format='pdf', bbox_inches='tight')

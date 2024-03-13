@@ -7,7 +7,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 3
+qubit_per_res = 2
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -114,6 +114,7 @@ print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurem
 
 from qiskit_ibm_provider import IBMProvider
 from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
@@ -126,24 +127,16 @@ options = {
     "optimization_level": 3
 }
 
-# with Session(service=service, backend=backend) as session: 
-#     sampler = Sampler(backend=backend, session=session, options=options)
-#     print('Running noisy simulation..')
-#     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-#     result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
-
-
 # Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
 session = Session(backend=backend)
 sampler = Sampler(backend=backend, session=session, options=options)
 qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 
-# # to check the 12 qubit issue
-# cobyla_optimizer = COBYLA(maxiter=1)    
-# sampler = Sampler(backend=backend, options=options)\\
-# print('Running noisy simulation..')
+# pm = generate_preset_pass_manager(optimization_level=1, target=backend.target)
+# optimal_circuit = qaoa.(result_gen.optimal_parameters)
+# transpiled_circuits = pm.run(optimal_circuit)
 
-# qaoa1 = QAOA(sampler=sampler, optimizer=cobyla_optimizer, reps=p, mixer=mixer_op, initial_point=initial_point)
+# result1 = qaoa1.compute_minimum_eigenvalue(H_gen, circuits=transpiled_circuits)
 
 result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
 

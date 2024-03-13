@@ -7,7 +7,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 3
+qubit_per_res = 2
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -24,9 +24,9 @@ print("q: \n", q)
 num_qubits = N_res * qubit_per_res
 
 ## Quantum optimisation
-from qiskit import Aer
+from qiskit_aer import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
-from qiskit.quantum_info.operators import Pauli, SparsePauliOp
+from qiskit.quantum_info import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
 from qiskit.primitives import Sampler
 
@@ -95,8 +95,18 @@ def create_interaction_operators(num_qubits, qubits_per_res, v):
 
 H_int = create_interaction_operators(num_qubits, qubit_per_res, v)
 
+H_gen = H_self + H_int
 
-H_gen = H_int + H_self
+# # Convert H_gen to a list of tuples (coefficient, Pauli string)
+# pauli_terms = []
+# for pauli, coeff in zip(H_gen.paulis, H_gen.coeffs):
+#     pauli_str = pauli.to_label()
+#     pauli_terms.append((coeff, pauli_str))
+
+# # Print out the formatted Hamiltonian
+# for coeff, pauli_str in pauli_terms:
+#     print(f"{coeff} * {pauli_str}")
+
 
 def X_op(i, num):
     op_list = ['I'] * num
@@ -112,17 +122,12 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 
-counts = result_gen.best_measurement
-histogram = plot_histogram(counts, title="QAOA Measurement Results")
-histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
 
 
-from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
+from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
-from qiskit.providers.fake_provider import FakeCairo
 from qiskit_ibm_runtime import QiskitRuntimeService, Options, Session, Sampler
-from qiskit.quantum_info import Kraus
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()

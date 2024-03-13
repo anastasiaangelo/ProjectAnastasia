@@ -43,7 +43,4 @@ qc.rz(2 * -0.9066044092, 3)
 # Visualize the circuit
 figure = qc.draw('mpl')
 
-figure.savefig("quantum_circuit.png")
-
-
-plt.show()
+figure.savefig("quantum_circuit.pdf")

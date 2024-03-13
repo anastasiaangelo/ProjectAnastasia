@@ -110,7 +110,6 @@ eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 
 ## Quantum optimisation
 #  Find minimum value using optimisation technique of QAOA
-from qiskit import Aer, QuantumCircuit, execute
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA

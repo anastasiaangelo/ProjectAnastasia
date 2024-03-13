@@ -125,7 +125,6 @@ print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 
 ## Quantum optimisation
 #  Find minimum value using optimisation technique of QAOA
-from qiskit import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA

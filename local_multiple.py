@@ -8,7 +8,7 @@ from itertools import combinations
 from qiskit.visualization import plot_histogram
 
 
-qubit_per_res = 2
+qubit_per_res = 3
 
 num_rot = 2**qubit_per_res
 

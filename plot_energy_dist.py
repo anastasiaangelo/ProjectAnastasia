@@ -16,16 +16,17 @@ print(df['E_ij'].describe())
 
 fig, ax = plt.subplots()
 
-sns.histplot(two_energies, kde=True, color='lightsteelblue', line_kws={'color': 'steelblue'}) 
-plt.title('Two-Body Energy Distribution')
+sns.set_theme(style="ticks")
+sns.histplot(two_energies, kde=True, bins=100, color='lightsteelblue', line_kws={'color': 'steelblue',  'linewidth': 1}) 
+plt.title('Filtered Two-Body Energy Distribution')
 plt.xlabel('Energy')
 plt.ylabel('Frequency')
 
-# For the zoom plot
-x_zoom_range = [-10, 50] 
-y_zoom_range = [0, 500] 
+# # For the zoom plot
+x_zoom_range = [-15, 50] 
+y_zoom_range = [0, 15000] 
 
-y_max_zoomed = 500 
+y_max_zoomed = 15000 
 y_min_zoomed = 0
 
 coordsA = "data"
@@ -36,7 +37,7 @@ xy2 = (x_zoom_range[1], y_min_zoomed)
 ax = plt.gca()
 ax_inset = inset_axes(ax, width="50%", height="50%", loc='upper right')
 
-sns.histplot(two_energies, kde=True, ax=ax_inset)
+sns.histplot(two_energies, kde=True, bins= 1500, ax=ax_inset, color='lightsteelblue', line_kws={'color': 'steelblue', 'linewidth': 2})
 ax_inset.set_xlim(x_zoom_range)
 ax_inset.set_ylim(y_zoom_range) 
 
@@ -54,9 +55,11 @@ plt.clf()
 df1 = pd.read_csv('energy_files/one_body_terms.csv')
 one_energies = df1['E_ii']
 
+print(df1['E_ii'].describe())
+
 plt.figure()
-sns.histplot(one_energies, kde=True, color='lightsteelblue', line_kws={'color': 'steelblue'})
-plt.title('One-Body Energy Distribution')
+sns.histplot(one_energies, kde=True, color='lightsteelblue', line_kws={'color': 'steelblue', 'linewidth': 2})
+plt.title('Filtered One-Body Energy Distribution')
 plt.xlabel('Energy')
 plt.ylabel('Frequency')
 plt.savefig('one_body_distribution.pdf', format='pdf', bbox_inches='tight')

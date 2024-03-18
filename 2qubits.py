@@ -26,7 +26,7 @@ from scipy.linalg import eig
 
 
 ## Quantum optimisation
-from qiskit import Aer, QuantumCircuit
+from qiskit import QuantumCircuit
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Operator, Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
@@ -207,5 +207,4 @@ print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 print(result1)
-
 

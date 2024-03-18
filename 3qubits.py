@@ -22,7 +22,6 @@ print("q: \n", q)
 num_qubits = N_res * qubit_per_res
 
 ## Quantum optimisation
-from qiskit import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA

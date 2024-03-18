@@ -7,6 +7,6 @@
 *.params
 venv1/
 myenv/
-QiskitDevenv
+QiskitDevenv/
 PyRosetta4.Release.python310.mac.release-358
 student-notebooks

@@ -1,11 +1,6 @@
-# Hybrid model to encode 2 rotmaers per qubit, to reduce circuit depth, check for 2 qubits per reisdue, so 4 rotamers per residue
+# Hybrid model to encode 2 rotamers per qubit, to reduce circuit depth, check for 4 qubits per reisdue, so 8 rotamers per residue
 import numpy as np
 import pandas as pd
-import itertools
-import functools
-import operator
-from itertools import combinations
-from qiskit.visualization import plot_histogram
 
 qubit_per_res = 4
 
@@ -49,53 +44,27 @@ def N_1(i, n):
     return z_op + i_op
 
 
-def create_pauli_operators(num_qubits, qubits_per_res):
-    operators = []
-    for i in range(0, num_qubits, qubits_per_res):
-        # Generate all combinations of N_0 and N_1 for the residue
-        for comb in itertools.product([N_0, N_1], repeat=qubits_per_res):
-            ops = [func(j, num_qubits) for j, func in enumerate(comb, start=i)]
-            # Now you have a list of operators for each qubit in the residue
-            full_op = functools.reduce(operator.matmul, ops)
-            operators.append(full_op)
-    return operators
+#each loop is one residue
+for i in range(0, num, num_rot): #rediue i
+    for j in range(0, int(num_rot/2)):   #each qubit for residue i
+        N_0j = N_0(j, num_qubits)
+        N_1j = N_1(j, num_qubits)
+        H_self += q[i] * N_0j + q[i+1] * N_1j
 
-for i, op in enumerate(create_pauli_operators(num_qubits, qubit_per_res)):
-    H_self += q[i] * op
-    if i >= len(q) - 1:
-        break
 
-def create_interaction_operators(num_qubits, qubits_per_res, v):
-    H_int = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
-    v_index = 0
-    
-    # Iterate over all unique pairs of residues
-    for res1, res2 in combinations(range(0, num_qubits, qubits_per_res), 2):
-        # Generate all combinations of N_0 and N_1 for each qubit in the residue
-        for comb1 in itertools.product([N_0, N_1], repeat=qubits_per_res):
-            for comb2 in itertools.product([N_0, N_1], repeat=qubits_per_res):
-                op_list1 = [func(i + res1, num_qubits) for i, func in enumerate(comb1)]
-                op_list2 = [func(j + res2, num_qubits) for j, func in enumerate(comb2)]
-                
-                # Now you have two lists of operators, one for each residue in the pair
-                full_op1 = functools.reduce(operator.matmul, op_list1)
-                full_op2 = functools.reduce(operator.matmul, op_list2)
-                
-                H_int += v[v_index] * full_op1 @ full_op2
-                v_index += 1
-                
-                if v_index >= len(v) - 1:
-                    break
-            if v_index >= len(v) - 1:
-                break
-        if v_index >= len(v) - 1:
-            break
+#one loop is one pair of residues
+for i in range(0, numm, num_rot**2):    # residue i
+    for k in range(0, int(num_rot/2)):       #qubits 0-3 for residue i
+        for l in range(0, int(num_rot/2)):   #qubits 0-3 for residue j
+            N_0k = N_0(k, num_qubits)
+            N_1k = N_1(k, num_qubits)
+            N_0l = N_0(l, num_qubits)
+            N_1l = N_1(l, num_qubits)
 
-    return H_int
+            H_int += v[i] * N_0k @ N_0l + v[i+1] * N_0k @ N_1l + v[i+2] * N_1k @ N_0l + v[i+3] * N_1k @ N_1l
+        
 
-H_int = create_interaction_operators(num_qubits, qubit_per_res, v)
-
-H_gen = H_self + H_int
+H_gen = H_int + H_self
 
 def X_op(i, num):
     op_list = ['I'] * num
@@ -111,8 +80,6 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 
-
-
 from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
@@ -126,26 +93,7 @@ service = QiskitRuntimeService(channel="ibm_quantum")
 backend = service.backend("ibmq_qasm_simulator")
 noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
-# fake_backend = FakeCairo()
-# noise_model = NoiseModel.from_backend(fake_backend)
 print('Noise model', noise_model)
-
-# prob_x = 0.05  # Probability for X error
-# prob_sx = 0.02  # Probability for SX error
-
-# # Create quantum errors
-# error_ops = [np.sqrt(1 - prob_sx) * np.eye(2), np.sqrt(prob_sx) * Pauli('X').to_matrix()]
-
-# error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
-# # error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
-# error_sx = QuantumError(Kraus(error_ops))
-
-# # Create a new noise model
-# new_noise_model = NoiseModel()
-
-# # Add quantum errors to the noise model for specific gates
-# new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
-# new_noise_model.add_quantum_error(error_sx, 'sx', [1])
 
 options = Options()
 options.simulator = {

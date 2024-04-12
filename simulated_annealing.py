@@ -123,23 +123,38 @@ print("Ground energy eigsh: ", eigenvalues[0])
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 
 # Simulated Annealing minimisation benchmark
-# Initial guess for the parameters
-x0 = [0.5, 0.5, 0.5]  # Adjust based on your actual number of parameters and their expected range
 
-# Define the step size for making jumps
-class MyTakeStep:
-    def __init__(self, stepsize=0.5):
-        self.stepsize = stepsize
+def binary_state_to_vector(state):
+    """Convert a binary state (0 and 1s) into a quantum state vector."""
+    vector_size = 2 ** len(state)
+    state_index = sum(s * 2**i for i, s in enumerate(reversed(state)))
+    state_vector = np.zeros(vector_size)
+    state_vector[state_index] = 1
+    return state_vector
 
-    def __call__(self, x):
-        x += np.random.uniform(-self.stepsize, self.stepsize, np.shape(x))
-        return x
+def energy_function(state, H):
+    """Calculate the energy of a given binary state."""
+    state_vector = binary_state_to_vector(state)
+    return state_vector @ H @ state_vector
+
+# Define a callable objective function for basinhopping
+def objective_function(x):
+    # Convert continuous variables to binary (0 or 1)
+    binary_state = [int(round(xi)) for xi in x]
+    return energy_function(binary_state, H_tot)
+
+# Initial guess (make sure it's binary or close to binary)
+x0 = np.random.choice([0, 1], size=num_qubits)
 
 # Configure the basinhopping algorithm
 minimizer_kwargs = {"method": "BFGS"}  # Local minimization algorithm
-take_step = MyTakeStep(stepsize=0.5)
+niter = 100
+T = 1.0
+stepsize = 0.5
 
-result = basinhopping(H_tot, x0, minimizer_kwargs=minimizer_kwargs, niter=100, T=1.0, stepsize=0.5, take_step=take_step)
+# Run basinhopping
+result = basinhopping(objective_function, x0, minimizer_kwargs=minimizer_kwargs, niter=niter, T=T, stepsize=stepsize)
+
 print("Global minimum with SA: ", result.fun)
 print("Parameters at minimum: ", result.x)
 

@@ -7,7 +7,7 @@ from copy import deepcopy
 
 num_rot = 2
 
-## configure the hamiltonian from the values calculated classically with pyrosetta
+########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
@@ -66,7 +66,7 @@ pairs = generate_pairs(N)
 M = deepcopy(H)
 M = add_penalty_term(M, P, pairs)
 
-## Classical optimisation:
+################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
 num_qubits = num
 
@@ -119,9 +119,10 @@ eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 print("\n\nClassical optimisation results. \n")
 print("Ground energy eigsh: ", eigenvalues[0])
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
+print('\n\n')
 
 
-## Quantum optimisation
+############################################# Quantum optimisation ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
@@ -181,6 +182,9 @@ qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initi
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+print('\n\n')
+
+############################################ Simulators ##########################################################################
 
 from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_provider import IBMProvider
@@ -192,24 +196,30 @@ provider = IBMProvider()
 available_backends = provider.backends()
 print([backend.name for backend in available_backends])
 service = QiskitRuntimeService(channel="ibm_quantum")
-backend = service.backend("ibmq_qasm_simulator")
+backend = provider.get_backend("ibmq_qasm_simulator")
 noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
 print('Noise model', noise_model)
+
+# from qiskit.transpiler.preset_passmanagers import level_1_pass_manager
+# pm = level_1_pass_manager(backend)
+
+# # Transpile the circuit
+# transpiled_circuit = pm.run(q_hamiltonian)
 
 options = Options()
 options.simulator = {
     "noise_model":  noise_model,
     "basis_gates": backend.configuration().basis_gates,
-    "coupling_map": backend.configuration().coupling_map,
     "seed_simulator": 42
 }
 options.execution.shots = 1000
 options.optimization_level = 0
 options.resilience_level = 0
 
-with Session(service=service, backend=backend):
-    sampler = Sampler(options=options)
+
+with Session(service=service, backend=backend) as session:
+    sampler = Sampler(session=session, options=options)
     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
     result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
     print('Running noisy simulation..')
@@ -218,9 +228,41 @@ print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+print('\n\n')
 
-## Energy checks
 
+
+############################################# Hardware ##################################################################
+
+from qiskit_ibm_provider import IBMProvider
+from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+
+IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
+provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
+service = QiskitRuntimeService(channel="ibm_quantum")
+backend = service.backend("ibm_torino")
+backend.configuration().default_rep_delay == 0.00001 #to speed up execution with dynamic repetition rate
+
+options = {
+    "shots": 1000,
+    "optimization_level": 3
+}
+
+# Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
+session = Session(backend=backend)
+sampler = Sampler(backend=backend, session=session, options=options)
+qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
+
+print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+print('best measurement', result1.best_measurement)
+print('Optimal parameters: ', result1.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+print('\n\n')
+
+
+###################################################### Energy checks ############################################################################
 k = 0
 for i in range(num_qubits):
     k += 0.5 * q[i]

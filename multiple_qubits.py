@@ -5,7 +5,7 @@ import functools
 import operator
 from itertools import combinations
 from qiskit.visualization import plot_histogram
-
+import matplotlib.pyplot as plt
 
 qubit_per_res = 2
 num_rot = 2**qubit_per_res
@@ -123,11 +123,16 @@ print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 
 
-
 from qiskit_aer.noise import NoiseModel
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer import AerSimulator
+from qiskit.circuit.library import QAOAAnsatz
 from qiskit_ibm_runtime import QiskitRuntimeService, Options, Session, Sampler
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit.primitives import StatevectorEstimator
+from qiskit_ibm_runtime import EstimatorV2 as Estimator
+from qiskit_ibm_runtime import SamplerV2 as Sampler
+from scipy.optimize import minimize
 
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider()
@@ -137,43 +142,69 @@ service = QiskitRuntimeService(channel="ibm_quantum")
 backend = service.backend("ibmq_qasm_simulator")
 noise_model = NoiseModel.from_backend(backend)
 simulator = AerSimulator(noise_model = noise_model)
-# fake_backend = FakeCairo()
-# noise_model = NoiseModel.from_backend(fake_backend)
 print('Noise model', noise_model)
 
-# prob_x = 0.05  # Probability for X error
-# prob_sx = 0.02  # Probability for SX error
+ansatz = QAOAAnsatz(H_gen, reps=2)
+ansatz.decompose(reps=3).draw(output='mpl', style='iqp')
 
-# # Create quantum errors
-# error_ops = [np.sqrt(1 - prob_sx) * np.eye(2), np.sqrt(prob_sx) * Pauli('X').to_matrix()]
+target = backend.target
+pm = generate_preset_pass_manager(target=target, optimization_level=3)
 
-# error_x = QuantumError(pauli_error([('X', prob_x), ('I', 1 - prob_x)]))
-# # error_sx = QuantumError(pauli_error([('SX', prob_sx), ('I', 1 - prob_sx)]))
-# error_sx = QuantumError(Kraus(error_ops))
+ansatz_isa =pm.run(ansatz)
+ansatz_isa.draw(output="mpl", idle_wires=False, style="iqp")
 
-# # Create a new noise model
-# new_noise_model = NoiseModel()
+hamiltonian_isa = H_gen.apply_layout(ansatz_isa.layout)
 
-# # Add quantum errors to the noise model for specific gates
-# new_noise_model.add_quantum_error(error_x, 'x', [0])  # Apply to qubit 0
-# new_noise_model.add_quantum_error(error_sx, 'sx', [1])
+def cost_func(params, ansatz, hamiltonian, estimator):
+    pub = (ansatz, [hamiltonian], [params])
+    result = estimator.run(pubs=[pub]).result()
+    cost = result[0].data.evs[0]
+    return cost
 
-options = Options()
-options.simulator = {
-    "noise_model":  noise_model,
-    "basis_gates": backend.configuration().basis_gates,
-    "coupling_map": backend.configuration().coupling_map,
-    "seed_simulator": 42
-}
-options.execution.shots = 1000
-options.optimization_level = 0
-options.resilience_level = 0
+# # To run on cloud simulator
+session = Session(backend=backend)
+estimator = Estimator(session=session)
+estimator.options.default_shots = 10_000
+estimator.options.dynamical_decoupling.enable = True
 
-with Session(service=service, backend=backend):
-    sampler = Sampler(options=options)
-    qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-    result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
-    print('Running noisy simulation..')
+sampler = Sampler(session=session)
+sampler.options.default_shots = 10_000
+sampler.options.dynamical_decoupling.enable = True
+
+num_parameters = ansatz_isa.num_parameters
+print(f"Number of parameters in the modified ansatz: {num_parameters}")
+initial_point_isa = np.ones(2)
+x0 = 2 * np.pi * np.random.rand(ansatz_isa.num_parameters)
+
+qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=x0)
+result1 = qaoa1.compute_minimum_eigenvalue(hamiltonian_isa)
+print('Running noisy simulation..')
+
+
+# # To run on local simulator
+# estimator = StatevectorEstimator()
+
+# x0 = 2 * np.pi * np.random.rand(ansatz_isa.num_parameters)
+# res = minimize(cost_func, x0, args=(ansatz_isa, hamiltonian_isa, estimator), method="COBYLA")
+# print('res: ', res)
+
+## as before
+# options = Options()
+# options.simulator = {
+#     "noise_model":  noise_model,
+#     "basis_gates": backend.configuration().basis_gates,
+#     "seed_simulator": 42
+# }
+# options.execution.shots = 1000
+# options.optimization_level = 0
+# options.resilience_level = 0
+
+# with Session(service=service, backend=backend) as session:
+#     # sampler = Sampler(options=options)
+#     sampler = Sampler(session=session)
+#     qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point_isa)
+#     result1 = qaoa1.compute_minimum_eigenvalue(hamiltonian_isa)
+#     print('Running noisy simulation..')
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)

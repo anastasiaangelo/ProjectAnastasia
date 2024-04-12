@@ -24,6 +24,7 @@ print("q: \n", q)
 
 num_qubits = N_res * qubit_per_res
 
+# %%
 ## Quantum optimisation
 from qiskit_aer import Aer
 from qiskit_algorithms.minimum_eigensolvers import QAOA
@@ -118,7 +119,7 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import SamplerV2 as Sampler
 from qiskit_ibm_runtime.fake_provider import FakeKolkataV2
 
-
+# %%
 # # Fake backends for local simulations
 # fake_backend = FakeKolkataV2()
 # pm = generate_preset_pass_manager(backend=fake_backend, optimization_level=1)
@@ -178,11 +179,11 @@ result = sampler.run([hamiltonian_isa]).result()
 print('aer simulation results: ', result)
 
 #%%
-backend = Aer.get_backend('aer_simulator')
-qaoa1 = QAOA(sampler= Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
-print("Ground state energy:", result.eigenvalue.real)
-print("Ground state:", result.eigenstate)
+# backend = Aer.get_backend('aer_simulator')
+# qaoa1 = QAOA(sampler= Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+# result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+# print("Ground state energy:", result.eigenvalue.real)
+# print("Ground state:", result.eigenstate)
 
 
 #%%
@@ -218,6 +219,33 @@ print("Ground state:", result.eigenstate)
 # print('Optimal parameters: ', result1.optimal_parameters)
 # print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 
+# %%
+from qiskit_aer.noise import NoiseModel
+from qiskit_aer.primitives import Sampler
+from qiskit.primitives import Sampler, BackendSampler
+from qiskit.transpiler import PassManager
 
+backend = Aer.get_backend('qasm_simulator')
+noise_model = NoiseModel.from_backend(backend)
+
+options= {
+    "noise_model": noise_model,
+    "basis_gates": backend.configuration().basis_gates,
+    "coupling_map": backend.configuration().coupling_map,
+    "seed_simulator": 42,
+    "shots": 1000,
+    "optimization_level": 3,
+    "resilience_level": 0
+}
+
+noisy_sampler = BackendSampler(backend=backend, options=options, bound_pass_manager=PassManager())
+
+qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result1 = qaoa1.compute_minimum_eigenvalue(H_gen)
+
+print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+print('best measurement', result1.best_measurement)
+print('Optimal parameters: ', result1.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 
 # %%

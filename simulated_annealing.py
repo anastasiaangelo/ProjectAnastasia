@@ -120,41 +120,45 @@ H_tot = C + H_penalty
 eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 print("\n\nClassical optimisation results. \n")
 print("Ground energy eigsh: ", eigenvalues[0])
-print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
+# print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 
 # Simulated Annealing minimisation benchmark
-
+# Improved binary_state_to_vector function
 def binary_state_to_vector(state):
     """Convert a binary state (0 and 1s) into a quantum state vector."""
     vector_size = 2 ** len(state)
-    state_index = sum(s * 2**i for i, s in enumerate(reversed(state)))
+    # Ensure the state is a list of integers and convert to index correctly
+    state_index = int("".join(str(int(x)) for x in state), 2)
     state_vector = np.zeros(vector_size)
     state_vector[state_index] = 1
     return state_vector
 
+# Ensure energy_function correctly uses the state vector
 def energy_function(state, H):
     """Calculate the energy of a given binary state."""
     state_vector = binary_state_to_vector(state)
     return state_vector @ H @ state_vector
 
-# Define a callable objective function for basinhopping
+# Correct the usage in basinhopping's objective function
 def objective_function(x):
-    # Convert continuous variables to binary (0 or 1)
-    binary_state = [int(round(xi)) for xi in x]
+    # Convert continuous variables to binary (0 or 1) and ensure valid binary states
+    binary_state = [1 if xi > 0.5 else 0 for xi in x]  # More robust rounding
     return energy_function(binary_state, H_tot)
 
-# Initial guess (make sure it's binary or close to binary)
+# Example usage with basinhopping
+from scipy.optimize import basinhopping
+
+# Adjust initial guess to be clearly binary
 x0 = np.random.choice([0, 1], size=num_qubits)
 
-# Configure the basinhopping algorithm
-minimizer_kwargs = {"method": "BFGS"}  # Local minimization algorithm
-niter = 100
-T = 1.0
-stepsize = 0.5
+# Basinhopping settings
+minimizer_kwargs = {"method": "BFGS"}
+niter = 1000
+T = 0.75
+stepsize = 0.25
 
-# Run basinhopping
+# Execute the basinhopping algorithm
 result = basinhopping(objective_function, x0, minimizer_kwargs=minimizer_kwargs, niter=niter, T=T, stepsize=stepsize)
 
 print("Global minimum with SA: ", result.fun)
 print("Parameters at minimum: ", result.x)
-

@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,7 +7,6 @@ import functools
 import operator
 from itertools import combinations
 from qiskit.visualization import plot_histogram
-
 
 qubit_per_res = 3
 
@@ -25,8 +25,10 @@ print("q: \n", q)
 
 num_qubits = N_res * qubit_per_res
 
+#%%
 ## Quantum optimisation
-from qiskit import Aer
+from qiskit_aer import Aer
+
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
@@ -114,10 +116,10 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result_gen.best_measurement)
 print('The ground state energy with QAOA is: ', np.real(result_gen.best_measurement['value']))
 
+#%%
 # counts = result_gen.best_measurement
 # histogram = plot_histogram(counts, title="QAOA Measurement Results")
 # histogram.savefig('qaoa_measurement_results.jpg', format='jpg')
-
 
 from qiskit_aer.noise import NoiseModel, QuantumError, pauli_error
 from qiskit.quantum_info import Kraus

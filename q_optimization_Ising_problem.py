@@ -1,9 +1,9 @@
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
 # or build the Pauli representation from the problem may be more efficient rather than converting it
 # too complex though for now 
+# %%
 import numpy as np
 import pandas as pd
-import csv
 import matplotlib.pyplot as plt
 from copy import deepcopy
 
@@ -122,7 +122,7 @@ print("\n\nClassical optimisation results. \n")
 print("Ground energy eigsh: ", eigenvalues[0])
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 
-
+#%%
 ## Quantum optimisation
 #  Find minimum value using optimisation technique of QAOA
 from qiskit_algorithms.minimum_eigensolvers import QAOA
@@ -186,6 +186,7 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
 # print(result)
 
+#%%
 k = 0
 for i in range(num_qubits):
     k += 0.5 * q[i]
@@ -231,3 +232,40 @@ for i in range(num_qubits):
 
 
 print(f"The energy for bitstring {bitstring} with QUBO model is: {en}")
+
+#%%
+# Local noisy simualtions Ising model
+from qiskit_ibm_provider import IBMProvider
+from qiskit_aer.noise import NoiseModel
+from qiskit_aer.primitives import Sampler
+from qiskit.primitives import Sampler, BackendSampler
+from qiskit.transpiler import PassManager
+
+simulator = Aer.get_backend('qasm_simulator')
+provider = IBMProvider()
+available_backends = provider.backends()
+print("Available Backends:", available_backends)
+device_backend = provider.get_backend('ibm_torino')
+noise_model = NoiseModel.from_backend(device_backend)
+
+options= {
+    "noise_model": noise_model,
+    "basis_gates": simulator.configuration().basis_gates,
+    "coupling_map": simulator.configuration().coupling_map,
+    "seed_simulator": 42,
+    "shots": 1000,
+    "optimization_level": 3,
+    "resilience_level": 0
+}
+
+noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
+
+qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
+
+print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+print('best measurement', result1.best_measurement)
+print('Optimal parameters: ', result1.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+
+# %%

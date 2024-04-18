@@ -1,13 +1,14 @@
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
 # or build the Pauli representation from the problem may be more efficient rather than converting it
 # too complex though for now 
+# %%
 import numpy as np
 import pandas as pd
 from copy import deepcopy
 
 num_rot = 2
 
-# %% ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
+########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
@@ -230,8 +231,10 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
 provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
 service = QiskitRuntimeService(channel="ibm_quantum")
-backend = service.backend("ibm_torino")
+backend = service.backend("ibm_cusco")
 backend.configuration().default_rep_delay == 0.00001 #to speed up execution with dynamic repetition rate
+
+print(backend.configuration().basis_gates)
 
 options = {
     "shots": 1000,
@@ -250,6 +253,52 @@ print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
 print('\n\n')
 
+# %% ############################################# Hardware wiht QAOAAnastz ##################################################################
+from qiskit.circuit.library import QAOAAnsatz
+from qiskit_ibm_provider import IBMProvider
+from qiskit_algorithms import SamplingVQE
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
+from qiskit.compiler import transpile
+
+IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
+provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
+service = QiskitRuntimeService(channel="ibm_quantum")
+backend = service.backend("ibm_cusco")
+
+# from qiskit_aer import AerSimulator
+
+# aer = AerSimulator.from_backend(backend)
+
+ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
+# transpiled_ansatz = transpile(ansatz, backend=backend, optimization_level=3)
+
+target = backend.target
+pm = generate_preset_pass_manager(target=target, optimization_level=3)
+ansatz_isa = pm.run(ansatz)
+
+hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
+hamiltonian_isa
+
+
+# def cost_func(params, ansatz, hamiltonian, estimator):
+#     cost = estimator.run(ansatz, q_hamiltonian, parameter_values=params).result().values[0]
+#     return cost
+
+# with Session(backend=aer) as session:
+with Session(backend=backend) as session:
+    print('here 1')
+    sampler = Sampler(backend=backend, session=session)
+    print('here 2')
+    qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
+    print('here 3')
+    result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
+
+print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
+print('best measurement', result2.best_measurement)
+print('Optimal parameters: ', result2.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
+print('\n\n')
 
 # %% ###################################################### Energy checks ############################################################################
 k = 0

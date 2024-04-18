@@ -235,6 +235,7 @@ print(f"The energy for bitstring {bitstring} with QUBO model is: {en}")
 
 #%%
 # Local noisy simualtions Ising model
+from qiskit_aer import Aer
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer.noise import NoiseModel
 from qiskit_aer.primitives import Sampler

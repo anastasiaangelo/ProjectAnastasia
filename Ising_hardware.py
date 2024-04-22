@@ -4,6 +4,7 @@
 # %%
 import numpy as np
 import pandas as pd
+import time
 from copy import deepcopy
 
 num_rot = 2
@@ -176,12 +177,18 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 
+start_time = time.time()
 p = 1  # Number of QAOA layers
 initial_point = np.ones(2 * p)
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
+end_time = time.time()
+
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+elapsed_time = end_time - start_time
+print(f"Local Simulation run time: {elapsed_time} seconds")
+
 print('\n\n')
 
 # %% ############################################ Simulators ##########################################################################
@@ -211,13 +218,17 @@ options= {
 
 noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
 
+start_time1 = time.time()
 qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
+end_time1 = time.time()
 
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+elapsed_time1 = end_time1 - start_time1
+print(f"Aer Simulator run time: {elapsed_time1} seconds")
 print('\n\n')
 
 
@@ -239,7 +250,15 @@ target = backend.target
 # %%
 # real_coupling_map = backend.configuration().coupling_map
 # coupling_map = CouplingMap(couplinglist=real_coupling_map)
-coupling_map = CouplingMap(couplinglist=[[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]])
+
+def generate_linear_coupling_map(num_qubits):
+
+    coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
+    
+    return CouplingMap(couplinglist=coupling_list)
+
+linear_coupling_map = generate_linear_coupling_map(num_qubits)
+coupling_map = CouplingMap(couplinglist=[[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
@@ -248,9 +267,10 @@ ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, c
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
+print("\n\nAnsatz layout after transpilation:", hamiltonian_isa),10
 
 # %%
+start_time2 = time.time()
 session = Session(backend=backend)
 print('\nhere 1')
 sampler = Sampler(backend=backend, session=session)
@@ -258,9 +278,14 @@ print('here 2')
 qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
 print('here 3')
 result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
+end_time2 = time.time()
 
 print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
 print('best measurement', result2.best_measurement)
 print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
+elapsed_time2 = end_time2 - start_time2
+print(f"Hardware run time: {elapsed_time2} seconds")
 print('\n\n')
+
+# %%

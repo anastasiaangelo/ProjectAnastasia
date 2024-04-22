@@ -185,7 +185,6 @@ print('best measurement', result.best_measurement)
 print('\n\n')
 
 # %% ############################################ Simulators ##########################################################################
-
 from qiskit_aer import Aer
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer.noise import NoiseModel
@@ -222,145 +221,46 @@ print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measu
 print('\n\n')
 
 
-# %% ############################################# Hardware ##################################################################
-
-# from qiskit_ibm_provider import IBMProvider
-# from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
-# from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-
-# IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
-# provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
-# service = QiskitRuntimeService(channel="ibm_quantum")
-# backend = service.backend("ibm_cusco")
-# backend.configuration().default_rep_delay == 0.00001 #to speed up execution with dynamic repetition rate
-
-# print(backend.configuration().basis_gates)
-
-# options = {
-#     "shots": 1000,
-#     "optimization_level": 3
-# }
-
-# # Because we are iteratively executing many calls to Runtime, we use a session to execute all calls within a single block
-# session = Session(backend=backend)
-# sampler = Sampler(backend=backend, session=session, options=options)
-# qaoa1 = QAOA(sampler=sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-# result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
-
-# print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
-# print('best measurement', result1.best_measurement)
-# print('Optimal parameters: ', result1.optimal_parameters)
-# print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
-# print('\n\n')
-
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit_algorithms import SamplingVQE
-from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
 from qiskit import transpile, QuantumCircuit, QuantumRegister
 from qiskit.transpiler import CouplingMap, Layout
 
 service = QiskitRuntimeService()
-backend = service.backend("ibm_cusco")
+backend = service.backend("ibm_torino")
+print('Coupling Map of hardware: ', backend.configuration().coupling_map)
 
 ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
-print('QAOAAnsatz: ', ansatz)
+print('\n\nQAOAAnsatz: ', ansatz)
 
 target = backend.target
-# layout = [0, 1, 2, 3, 4, 5, 6, 7]   # , 8, 9, 10, 11, 12, 13]
-
-# Manually define the coupling map to restrict qubit usage
+# %%
+# real_coupling_map = backend.configuration().coupling_map
+# coupling_map = CouplingMap(couplinglist=real_coupling_map)
 coupling_map = CouplingMap(couplinglist=[[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]])
-
-# Use a trivial layout where logical qubits are the same as physical qubits
-qr = QuantumRegister(8, 'q')
+qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
-
-# Create a layout mapping each logical qubit in the register to a corresponding physical qubit
-trivial_layout = Layout({qr[i]: i for i in range(8)})
-
-
+trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
 ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
                        optimization_level=1, layout_method='trivial', routing_method='basic')
-# ansatz_isa = transpile(ansatz, backend, initial_layout=layout, optimization_level=1, layout_method='trivial', routing_method='basic')
-print("Ansatz layout after explicit transpilation:", ansatz_isa._layout)
-# pm = generate_preset_pass_manager(target=target, optimization_level=1, initial_layout=layout)
-# ansatz_isa = pm.run(ansatz)
+print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-print("Ansatz layout after transpilation:", ansatz_isa._layout)
-# print("Original Hamiltonian:", q_hamiltonian)
-transformed_hamiltonian = q_hamiltonian.apply_layout(ansatz_isa._layout)
-print("Transformed Hamiltonian:", transformed_hamiltonian)
-# %%
+print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
+# %%
 session = Session(backend=backend)
-print('here 1')
+print('\nhere 1')
 sampler = Sampler(backend=backend, session=session)
 print('here 2')
 qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
 print('here 3')
 result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
 
-# with Session(backend=backend) as session:
-#     print('here 1')
-#     sampler = Sampler(backend=backend, session=session)
-#     print('here 2')
-#     qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
-#     print('here 3')
-#     result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
-
 print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
 print('best measurement', result2.best_measurement)
 print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
 print('\n\n')
-
-
-# %% ###################################################### Energy checks ############################################################################
-# k = 0
-# for i in range(num_qubits):
-#     k += 0.5 * q[i]
-
-# for i in range(num_qubits):
-#     for j in range(num_qubits):
-#         if i != j:
-#             k += 0.5 * 0.25 * Q[i][j]
-
-# print('The ground state energy classically is: ', eigenvalues[0] + N*P + k)
-
-# print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value']) + N*P + k)
-
-# # alternative ground state energy calculation with Ising model
-# bitstring = result.best_measurement['bitstring']
-# spins = [1 if bit == '0' else -1 for bit in bitstring]
-
-# energy = 0
-
-# for i in range(num_qubits):
-#     for j in range(num_qubits):
-#         if i != j:
-#             energy += 0.5 * H[i][j] * spins[i] * spins[j]
-
-# for i in range(num_qubits):
-#     energy +=  H[i][i] * spins[i]
-
-# print(f"The energy for bitstring {bitstring} with Ising model is: {energy + k}")
-
-# # with QUBO model
-# bits = [0 if bit == '0' else 1 for bit in bitstring]
-
-# en = 0
-
-# for i in range(num_qubits):
-#     en += q[i] * bits[i]
-
-# for i in range(num_qubits):
-#     for j in range(num_qubits):
-#         if Q[i][j] != 0:
-#             if i != j:
-#                 en += 0.5 * Q[i][j] * bits[i] * bits[j]
-
-
-# print(f"The energy for bitstring {bitstring} with QUBO model is: {en}")

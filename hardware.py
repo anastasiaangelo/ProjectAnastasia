@@ -116,9 +116,7 @@ from qiskit_ibm_provider import IBMProvider
 from qiskit_ibm_runtime import QiskitRuntimeService, Sampler, Session
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 
-IBMProvider.save_account('25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', overwrite=True)
-provider = IBMProvider(instance='ibm-q-stfc/life-sciences/protein-folding')
-service = QiskitRuntimeService(channel="ibm_quantum")
+service = QiskitRuntimeService.save_account(channel='ibm_quantum', token='25a4f69c2395dfbc9990a6261b523fe99e820aa498647f92552992afb1bd6b0bbfcada97ec31a81a221c16be85104beb653845e23eeac2fe4c0cb435ec7fc6b4', instance='ibm-q-stfc/life-sciences/protein-folding')
 backend = service.backend("ibm_torino")
 backend.configuration().default_rep_delay == 0.00001 #to speed up execution with dynamic repetition rate
 

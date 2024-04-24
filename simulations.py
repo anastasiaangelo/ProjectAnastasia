@@ -1,7 +1,6 @@
-# Point 1 of constraint studies for paper, Ising model with no penalties, constriants enforced by post selection of contrain satisfying states. 
-# so after the results, manually removing the menaingless solutions that don;t represent physical solutions, that don't respect the constraints (eg. no rotamer chosen on 1 residue, or 2 rotamers chosen)
-
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
+# or build the Pauli representation from the problem may be more efficient rather than converting it
+# too complex though for now 
 # %%
 import numpy as np
 import pandas as pd
@@ -52,42 +51,77 @@ for i in range(num):
 
 print('\nH: \n', H)
 
+# add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
+def add_penalty_term(M, penalty_constant, residue_pairs):
+    for i, j in residue_pairs:
+        M[i][j] += penalty_constant
+        
+    return M
+
+P = 6
+
+def generate_pairs(N):
+    pairs = [(i, i+1) for i in range(0, 2*N, 2)]
+    return pairs
+
+pairs = generate_pairs(N)
+
+M = deepcopy(H)
+M = add_penalty_term(M, P, pairs)
 
 # %% ################################################ Classical optimisation ###########################################################
-from scipy.sparse.linalg import eigsh
+# from scipy.sparse.linalg import eigsh
 
-Z_matrix = np.array([[1, 0], [0, -1]])
-identity = np.eye(2)
+# Z_matrix = np.array([[1, 0], [0, -1]])
+# identity = np.eye(2)
 
-def construct_operator(qubit_indices, num_qubits):
-    operator = np.eye(1)
-    for qubit in range(num_qubits):
-        if qubit in qubit_indices:
-            operator = np.kron(operator, Z_matrix)
-        else:
-            operator = np.kron(operator, identity)
-    return operator
+# def construct_operator(qubit_indices, num_qubits):
+#     operator = np.eye(1)
+#     for qubit in range(num_qubits):
+#         if qubit in qubit_indices:
+#             operator = np.kron(operator, Z_matrix)
+#         else:
+#             operator = np.kron(operator, identity)
+#     return operator
 
-C = np.zeros((2**num_qubits, 2**num_qubits))
+# C = np.zeros((2**num_qubits, 2**num_qubits))
 
-for i in range(num_qubits):
-    operator = construct_operator([i], num_qubits)
-    C += H[i][i] * operator
+# for i in range(num_qubits):
+#     operator = construct_operator([i], num_qubits)
+#     C += H[i][i] * operator
 
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        operator = construct_operator([i, j], num_qubits)
-        C += H[i][j] * operator
+# for i in range(num_qubits):
+#     for j in range(i+1, num_qubits):
+#         operator = construct_operator([i, j], num_qubits)
+#         C += H[i][j] * operator
 
-print('C :\n', C)
+# print('C :\n', C)
 
-# Extract the ground state energy and wavefunction
-# using sparse representation so as to be able to generalise to larger systems
-eigenvalues, eigenvectors = eigsh(C, k=num, which='SA')
-print("\n\nClassical optimisation results. \n")
-print("Ground energy eigsh: ", eigenvalues[0])
-print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
-print('\n\n')
+# def create_hamiltonian(pairs, P, num_qubits):
+#     H_pen = np.zeros((2**num_qubits, 2**num_qubits))
+#     def tensor_term(term_indices):
+#         term = [Z_matrix if i in term_indices else identity for i in range(num_qubits)]
+#         result = term[0]
+#         for t in term[1:]:
+#             result = np.kron(result, t)
+#         return result
+    
+#     for pair in pairs:
+#         term = tensor_term(pair)
+#         H_pen += P * term
+
+#     return H_pen
+
+# H_penalty = create_hamiltonian(pairs, P, num_qubits)
+# H_tot = C + H_penalty
+
+# # Extract the ground state energy and wavefunction
+# # using sparse representation so as to be able to generalise to larger systems
+# eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
+# print("\n\nClassical optimisation results. \n")
+# print("Ground energy eigsh: ", eigenvalues[0])
+# print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
+# print('\n\n')
 
 # %% ############################################ Quantum optimisation ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
@@ -118,17 +152,16 @@ def generate_pauli_zij(n, i, j):
 
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
-# C or M ?!?!?!?!?!!
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
-        if H[i][j] != 0:
+        if M[i][j] != 0:
             pauli = generate_pauli_zij(num_qubits, i, j)
-            op = SparsePauliOp(pauli, coeffs=[H[i][j]])
+            op = SparsePauliOp(pauli, coeffs=[M[i][j]])
             q_hamiltonian += op
 
 for i in range(num_qubits):
     pauli = generate_pauli_zij(num_qubits, i, i)
-    Z_i = SparsePauliOp(pauli, coeffs=[H[i][i]])
+    Z_i = SparsePauliOp(pauli, coeffs=[M[i][i]])
     q_hamiltonian += Z_i
 
 def format_sparsepauliop(op):
@@ -197,78 +230,3 @@ print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measu
 elapsed_time1 = end_time1 - start_time1
 print(f"Aer Simulator run time: {elapsed_time1} seconds")
 print('\n\n')
-
-
-# %% ############################################# Hardware with QAOAAnastz ##################################################################
-from qiskit.circuit.library import QAOAAnsatz
-from qiskit_algorithms import SamplingVQE
-from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
-from qiskit import transpile, QuantumCircuit, QuantumRegister
-from qiskit.transpiler import CouplingMap, Layout
-
-service = QiskitRuntimeService()
-backend = service.backend("ibm_torino")
-print('Coupling Map of hardware: ', backend.configuration().coupling_map)
-
-ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
-print('\n\nQAOAAnsatz: ', ansatz)
-
-target = backend.target
-# %%
-# real_coupling_map = backend.configuration().coupling_map
-# coupling_map = CouplingMap(couplinglist=real_coupling_map)
-
-def generate_linear_coupling_map(num_qubits):
-
-    coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
-    
-    return CouplingMap(couplinglist=coupling_list)
-
-# linear_coupling_map = generate_linear_coupling_map(num_qubits)
-coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
-qr = QuantumRegister(num_qubits, 'q')
-circuit = QuantumCircuit(qr)
-trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
-                       optimization_level=1, layout_method='trivial', routing_method='basic')
-print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
-
-hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
-
-# %%
-session = Session(backend=backend)
-print('\nhere 1')
-sampler = Sampler(backend=backend, session=session)
-print('here 2')
-qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
-print('here 3')
-result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
-
-print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
-print('best measurement', result2.best_measurement)
-print('Optimal parameters: ', result2.optimal_parameters)
-print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
-
-jobs = service.jobs(session_id='crmfh9d14ys00088aq6g')
-
-total_usage_time = 0
-for job in jobs:
-    job_result = job.usage_estimation['quantum_seconds']
-    total_usage_time += job_result
-
-print(f"Total Usage Time Hardware
-      : {total_usage_time} seconds")
-print('\n\n')
-
-# %%
-index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
-
-measured_bitstring = result2.best_measurement['bitstring']
-original_bitstring = ['']*num_qubits
-
-for i, logical in enumerate(index):
-        original_bitstring[i] = measured_bitstring[logical]
-
-original_bitstring = ''.join(original_bitstring)
-print("Original bitstring:", original_bitstring)

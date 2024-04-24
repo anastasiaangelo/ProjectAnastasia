@@ -1,6 +1,7 @@
 ### Take input pdb, score, repack and extract one and two body energies
-import pyrosetta;
+import pyrosetta
 pyrosetta.init()
+
 from pyrosetta.teaching import *
 from pyrosetta import *
 
@@ -18,7 +19,7 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction
-pose = pyrosetta.pose_from_pdb("input_files/test.pdb")
+pose = pyrosetta.pose_from_pdb("input_files/11residue.pdb")
 
 
 residue_count = pose.total_residue()
@@ -83,7 +84,7 @@ df1 = pd.DataFrame(columns=['res i', 'rot A_i', 'E_ii'])
 # pmm.apply(clone_pose)
 
 # to limit to 2 rotamers per residue
-num_rot = 8
+num_rot = 2
 
 # Loop to find Hamiltonian values Jij - interaction of rotamers on NN residues
 for residue_number in range(1, residue_count):

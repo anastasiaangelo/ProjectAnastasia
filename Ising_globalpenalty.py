@@ -1,5 +1,4 @@
-# Point 1 of constraint studies for paper, Ising model with no penalties, constriants enforced by post selection of contrain satisfying states. 
-# so after the results, manually removing the menaingless solutions that don;t represent physical solutions, that don't respect the constraints (eg. no rotamer chosen on 1 residue, or 2 rotamers chosen)
+# Point 3 of constraint studies for paper, Ising model with global penalties
 
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
 # %%
@@ -52,6 +51,23 @@ for i in range(num):
 
 print('\nH: \n', H)
 
+# add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
+def add_penalty_term(M, penalty_constant, residue_pairs):
+    for i, j in residue_pairs:
+        M[i][j] += penalty_constant
+        
+    return M
+
+P = 6
+
+def generate_pairs(N):
+    pairs = [(i, i+1) for i in range(0, 2*N, 2)]
+    return pairs
+
+pairs = generate_pairs(N)
+
+M = deepcopy(H)
+M = add_penalty_term(M, P, pairs)
 
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
@@ -81,9 +97,27 @@ for i in range(num_qubits):
 
 print('C :\n', C)
 
+def create_hamiltonian(pairs, P, num_qubits):
+    H_pen = np.zeros((2**num_qubits, 2**num_qubits))
+    def tensor_term(term_indices):
+        term = [Z_matrix if i in term_indices else identity for i in range(num_qubits)]
+        result = term[0]
+        for t in term[1:]:
+            result = np.kron(result, t)
+        return result
+    
+    for pair in pairs:
+        term = tensor_term(pair)
+        H_pen += P * term
+
+    return H_pen
+
+H_penalty = create_hamiltonian(pairs, P, num_qubits)
+H_tot = C + H_penalty
+
 # Extract the ground state energy and wavefunction
 # using sparse representation so as to be able to generalise to larger systems
-eigenvalues, eigenvectors = eigsh(C, k=num, which='SA')
+eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 print("\n\nClassical optimisation results. \n")
 print("Ground energy eigsh: ", eigenvalues[0])
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
@@ -118,7 +152,6 @@ def generate_pauli_zij(n, i, j):
 
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
-# C or M ?!?!?!?!?!!
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
         if H[i][j] != 0:

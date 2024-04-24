@@ -1,6 +1,6 @@
+# Point 2 of constraint studies for paper, Ising model with local penalties
+
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
-# or build the Pauli representation from the problem may be more efficient rather than converting it
-# too complex though for now 
 # %%
 import numpy as np
 import pandas as pd

@@ -14,6 +14,7 @@ df1 = pd.read_csv("energy_files/one_body_terms.csv")
 q = df1['E_ii'].values
 num = len(q)
 N = int(num/num_rot)
+num_qubits = num
 
 print('Qii values: \n', q)
 
@@ -70,7 +71,6 @@ M = add_penalty_term(M, P, pairs)
 
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
-num_qubits = num
 
 Z_matrix = np.array([[1, 0], [0, -1]])
 identity = np.eye(2)
@@ -257,8 +257,8 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
-coupling_map = CouplingMap(couplinglist=[[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13]])
+# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
@@ -267,10 +267,9 @@ ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, c
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-print("\n\nAnsatz layout after transpilation:", hamiltonian_isa),10
+print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
 # %%
-start_time2 = time.time()
 session = Session(backend=backend)
 print('\nhere 1')
 sampler = Sampler(backend=backend, session=session)
@@ -278,14 +277,31 @@ print('here 2')
 qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
 print('here 3')
 result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
-end_time2 = time.time()
 
 print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
 print('best measurement', result2.best_measurement)
 print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
-elapsed_time2 = end_time2 - start_time2
-print(f"Hardware run time: {elapsed_time2} seconds")
+
+jobs = service.jobs(session_id='crmfh9d14ys00088aq6g')
+
+total_usage_time = 0
+for job in jobs:
+    job_result = job.usage_estimation['quantum_seconds']
+    total_usage_time += job_result
+
+print(f"Total Usage Time Hardware
+      : {total_usage_time} seconds")
 print('\n\n')
 
 # %%
+index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
+
+measured_bitstring = result2.best_measurement['bitstring']
+original_bitstring = ['']*num_qubits
+
+for i, logical in enumerate(index):
+        original_bitstring[i] = measured_bitstring[logical]
+
+original_bitstring = ''.join(original_bitstring)
+print("Original bitstring:", original_bitstring)

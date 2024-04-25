@@ -90,8 +90,9 @@ print('\n\n')
 # %% ############################################ Quantum optimisation ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
-from qiskit_algorithms.optimizers import COBYLA
+from qiskit_algorithms.optimizers import COBYLA, SPSA
 from qiskit.primitives import Sampler
+from qiskit import QuantumCircuit
 
 def X_op(i, num_qubits):
     """Return an X Pauli operator on the specified qubit in a num-qubit system."""
@@ -112,7 +113,6 @@ def generate_pauli_zij(n, i, j):
         pauli_str[j] = 'Z'
 
     return Pauli(''.join(pauli_str))
-
 
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
@@ -140,26 +140,44 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 
 # XY mixer to implement Hamming condition
 def create_xy_hamiltonian(num_qubits):
-    """
-    Create the XY Hamiltonian for a given number of qubits.
-
-    :param num_qubits: int, the number of qubits in the system
-    :return: PauliSumOp, the XY Hamiltonian as an operator
-    """
-    hamiltonian = ['I'] * num_qubits
-    for i in range(num_qubits):
-        for j in range(i + 1, num_qubits):
-            xx_term = SparsePauliOp(Pauli('I' * i + 'X' + 'I' * (j - i - 1) + 'X' + 'I' * (num_qubits - j - 1)), 1.0)
-            yy_term = SparsePauliOp(Pauli('I' * i + 'Y' + 'I' * (j - i - 1) + 'Y' + 'I' * (num_qubits - j - 1)), 1.0)
-            hamiltonian += xx_term + yy_term
+    hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])  
+    for i in range(0, num_qubits, 2):
+        if i + 1 < num_qubits:
+            xx_term = ['I'] * num_qubits
+            yy_term = ['I'] * num_qubits
+            xx_term[i] = 'X'
+            xx_term[i+1] = 'X'
+            yy_term[i] = 'Y'
+            yy_term[i+1] = 'Y'
+            xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
+            yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
+            hamiltonian += xx_op + yy_op
     return -hamiltonian 
 
 XY_mixer = create_xy_hamiltonian(num_qubits)
 
+def format_sparsepauliop(op):
+    terms = []
+    labels = [pauli.to_label() for pauli in op.paulis]
+    coeffs = op.coeffs
+    for label, coeff in zip(labels, coeffs):
+        terms.append(f"{coeff:.10f} * {label}")
+    return '\n'.join(terms)
+
+print('XY mixer: ', XY_mixer)
+
 start_time = time.time()
-p = 1  # Number of QAOA layers
+p = 1
 initial_point = np.ones(2 * p)
-qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=XY_mixer, initial_point=initial_point)
+
+initial_bitstring = '0101'
+state_vector = np.zeros(2**num_qubits)
+indexx = int(initial_bitstring, 2)
+state_vector[indexx] = 1
+qc = QuantumCircuit(num_qubits)
+qc.initialize( state_vector, range(num_qubits))
+
+qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, initial_state=qc, mixer=XY_mixer, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 end_time = time.time()
 
@@ -174,8 +192,7 @@ print('\n\n')
 from qiskit_aer import Aer
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer.noise import NoiseModel
-from qiskit_aer.primitives import Sampler
-from qiskit.primitives import Sampler, BackendSampler
+from qiskit.primitives import BackendSampler
 from qiskit.transpiler import PassManager
 
 simulator = Aer.get_backend('qasm_simulator')
@@ -247,6 +264,8 @@ print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
 print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
+
+ansatz_isa.decompose().draw('mpl')
 
 # %%
 session = Session(backend=backend)

@@ -9,6 +9,8 @@ import time
 from copy import deepcopy
 
 num_rot = 2
+file_path = "RESULTS/nopenalty-QAOA/2rot-4qubit"
+
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -52,6 +54,9 @@ for i in range(num):
 
 print('\nH: \n', H)
 
+with open(file_path, "w") as file:
+    file.write(f"H : {H} \n")
+
 
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
@@ -89,6 +94,11 @@ print("Ground energy eigsh: ", eigenvalues[0])
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 print('\n\n')
 
+with open(file_path, "a") as file:
+    file.write("\n\nClassical optimisation results.\n")
+    file.write(f"Ground energy eigsh: {eigenvalues[0]}\n")
+    file.write(f"Ground state wavefunction eigsh: {eigenvectors[:,0]}\n")
+
 # %% ############################################ Quantum optimisation ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
@@ -118,7 +128,6 @@ def generate_pauli_zij(n, i, j):
 
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
-# C or M ?!?!?!?!?!!
 for i in range(num_qubits):
     for j in range(i+1, num_qubits):
         if H[i][j] != 0:
@@ -155,8 +164,13 @@ print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
 elapsed_time = end_time - start_time
 print(f"Local Simulation run time: {elapsed_time} seconds")
-
 print('\n\n')
+
+with open(file_path, "a") as file:
+    file.write("\n\nThe result of the quantum optimisation using QAOA is: \n")
+    file.write(f"'best measurement' {result.best_measurement}\n")
+    file.write(f"Local Simulation run time: {elapsed_time} seconds\n")
+
 
 # %% ############################################ Simulators ##########################################################################
 from qiskit_aer import Aer
@@ -197,6 +211,13 @@ print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measu
 elapsed_time1 = end_time1 - start_time1
 print(f"Aer Simulator run time: {elapsed_time1} seconds")
 print('\n\n')
+
+with open(file_path, "a") as file:
+    file.write("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+    file.write(f"'best measurement' {result1.best_measurement}")
+    file.write(f"Optimal parameters: {result1.optimal_parameters}")
+    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result1.best_measurement['value'])}")
+    file.write(f"Aer Simulator run time: {elapsed_time1} seconds")
 
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
@@ -260,6 +281,14 @@ for job in jobs:
 print(f"Total Usage Time Hardware
       : {total_usage_time} seconds")
 print('\n\n')
+
+with open(file_path, "a") as file:
+    file.write("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
+    file.write(f"'best measurement' {result2.best_measurement}")
+    file.write(f"Optimal parameters: {result2.optimal_parameters}")
+    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
+    file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
+
 
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring

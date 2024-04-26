@@ -51,24 +51,6 @@ for i in range(num):
 
 print('\nH: \n', H)
 
-# add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
-def add_penalty_term(M, penalty_constant, residue_pairs):
-    for i, j in residue_pairs:
-        M[i][j] += penalty_constant
-        
-    return M
-
-P = 6
-
-def generate_pairs(N):
-    pairs = [(i, i+1) for i in range(0, 2*N, 2)]
-    return pairs
-
-pairs = generate_pairs(N)
-
-M = deepcopy(H)
-M = add_penalty_term(M, P, pairs)
-
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
 
@@ -97,27 +79,23 @@ for i in range(num_qubits):
 
 print('C :\n', C)
 
-def create_hamiltonian(pairs, P, num_qubits):
-    H_pen = np.zeros((2**num_qubits, 2**num_qubits))
-    def tensor_term(term_indices):
-        term = [Z_matrix if i in term_indices else identity for i in range(num_qubits)]
-        result = term[0]
-        for t in term[1:]:
-            result = np.kron(result, t)
-        return result
-    
-    for pair in pairs:
-        term = tensor_term(pair)
-        H_pen += P * term
+lambda_penalty = 1
+Hamming_weight = 4
 
-    return H_pen
+penalty_operator = np.zeros((2**num_qubits, 2**num_qubits))
 
-H_penalty = create_hamiltonian(pairs, P, num_qubits)
-H_tot = C + H_penalty
+for i in range(num_qubits):
+    Zi_operator = construct_operator([i], num_qubits)
+    penalty_operator += Zi_operator
+
+penalty_operator = lambda_penalty * (np.dot(penalty_operator, penalty_operator) - 2 * Hamming_weight * penalty_operator + Hamming_weight**2 * np.eye(2**num_qubits))
+
+C_with_penalty = C + penalty_operator
+print('C_withpenalty: ', C_with_penalty)
 
 # Extract the ground state energy and wavefunction
 # using sparse representation so as to be able to generalise to larger systems
-eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
+eigenvalues, eigenvectors = eigsh(C_with_penalty, k=num, which='SA')
 print("\n\nClassical optimisation results. \n")
 print("Ground energy eigsh: ", eigenvalues[0])
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
@@ -149,7 +127,6 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
-
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
@@ -172,7 +149,26 @@ def format_sparsepauliop(op):
         terms.append(f"{coeff:.10f} * {label}")
     return '\n'.join(terms)
 
+# add global penalty term to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
+def z_i(i, num_qubits):
+    pauli_str = ['I'] * num_qubits
+    pauli_str[i] = 'Z'
+    z_op = SparsePauliOp(Pauli(''.join(pauli_str)), coeffs=[1])
+    return z_op
+
+def construct_hamming_penalty(num_qubits, desired_Hamming_weight, penalty):
+    total_z = sum(z_i(i, num_qubits) for i in range(num_qubits))
+    hamming_term = total_z - desired_Hamming_weight * SparsePauliOp('I' * num_qubits)
+    penalty_term = hamming_term @ hamming_term
+
+    penalty_term = penalty * penalty_term
+
+    return penalty_term
+
+H_p = q_hamiltonian + construct_hamming_penalty(num_qubits, Hamming_weight, lambda_penalty)
+
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
+print(f"\nThe hamiltonian with the global penalty term is: \n", format_sparsepauliop(H_p))
 
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
@@ -186,9 +182,9 @@ end_time = time.time()
 
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+print('adjusted energy: ', result.best_measurement['value'])
 elapsed_time = end_time - start_time
 print(f"Local Simulation run time: {elapsed_time} seconds")
-
 print('\n\n')
 
 # %% ############################################ Simulators ##########################################################################

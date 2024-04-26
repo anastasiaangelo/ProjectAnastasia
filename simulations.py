@@ -176,10 +176,11 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-
-start_time = time.time()
 p = 1  # Number of QAOA layers
 initial_point = np.ones(2 * p)
+
+# %%
+start_time = time.time()
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 end_time = time.time()
@@ -230,3 +231,4 @@ print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measu
 elapsed_time1 = end_time1 - start_time1
 print(f"Aer Simulator run time: {elapsed_time1} seconds")
 print('\n\n')
+# %%

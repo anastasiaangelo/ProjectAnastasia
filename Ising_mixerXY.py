@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/XY-QAOA/2rot-4qubit"
+file_path = "RESULTS/XY-QAOA/8res-2rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -180,12 +180,16 @@ start_time = time.time()
 p = 1
 initial_point = np.ones(2 * p)
 
-initial_bitstring = '0101'
+def generate_initial_bitstring(num_qubits):
+    bitstring = [(i%2) for i in range(num_qubits)]
+    return ''.join(map(str, bitstring))
+
+initial_bitstring = generate_initial_bitstring(num_qubits)
 state_vector = np.zeros(2**num_qubits)
 indexx = int(initial_bitstring, 2)
 state_vector[indexx] = 1
 qc = QuantumCircuit(num_qubits)
-qc.initialize( state_vector, range(num_qubits))
+qc.initialize(state_vector, range(num_qubits))
 
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, initial_state=qc, mixer=XY_mixer, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
@@ -264,29 +268,33 @@ ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=XY_mixer, reps=p)
 print('\n\nQAOAAnsatz: ', ansatz)
 
 target = backend.target
+
 # %%
-# real_coupling_map = backend.configuration().coupling_map
-# coupling_map = CouplingMap(couplinglist=real_coupling_map)
-
 def generate_linear_coupling_map(num_qubits):
-
     coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
-    
     return CouplingMap(couplinglist=coupling_list)
 
-# linear_coupling_map = generate_linear_coupling_map(num_qubits)
-coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
+linear_coupling_map = generate_linear_coupling_map(num_qubits)
+# coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
-                       optimization_level=1, layout_method='trivial', routing_method='basic')
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
+                       optimization_level=3, layout_method='trivial', routing_method='basic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
 print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
-
+ 
+# %%
 ansatz_isa.decompose().draw('mpl')
+
+op_counts = ansatz_isa.count_ops()
+total_gates = sum(op_counts.values())
+depth = ansatz_isa.depth()
+print("Operation counts:", op_counts)
+print("Total number of gates:", total_gates)
+print("Depth of the circuit: ", depth)
 
 # %%
 session = Session(backend=backend)
@@ -318,6 +326,8 @@ with open(file_path, "a") as file:
     file.write(f"Optimal parameters: {result2.optimal_parameters}")
     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
+    file.write(f"Total number of gates: {total_gates}\n")
+    file.write(f"Depth of circuit: {depth}\n")
 
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring

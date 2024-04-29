@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/2rot-4qubit"
+file_path = "RESULTS/localpenalty-QAOA/7res-2rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -207,51 +207,51 @@ with open(file_path, "a") as file:
 
 
 # %% ############################################ Simulators ##########################################################################
-# from qiskit_aer import Aer
-# from qiskit_ibm_provider import IBMProvider
-# from qiskit_aer.noise import NoiseModel
-# from qiskit_aer.primitives import Sampler
-# from qiskit.primitives import Sampler, BackendSampler
-# from qiskit.transpiler import PassManager
+from qiskit_aer import Aer
+from qiskit_ibm_provider import IBMProvider
+from qiskit_aer.noise import NoiseModel
+from qiskit_aer.primitives import Sampler
+from qiskit.primitives import Sampler, BackendSampler
+from qiskit.transpiler import PassManager
 
-# simulator = Aer.get_backend('qasm_simulator')
-# provider = IBMProvider()
-# available_backends = provider.backends()
-# print("Available Backends:", available_backends)
-# device_backend = provider.get_backend('ibm_torino')
-# noise_model = NoiseModel.from_backend(device_backend)
+simulator = Aer.get_backend('qasm_simulator')
+provider = IBMProvider()
+available_backends = provider.backends()
+print("Available Backends:", available_backends)
+device_backend = provider.get_backend('ibm_torino')
+noise_model = NoiseModel.from_backend(device_backend)
 
-# options= {
-#     "noise_model": noise_model,
-#     "basis_gates": simulator.configuration().basis_gates,
-#     "coupling_map": simulator.configuration().coupling_map,
-#     "seed_simulator": 42,
-#     "shots": 1000,
-#     "optimization_level": 3,
-#     "resilience_level": 0
-# }
+options= {
+    "noise_model": noise_model,
+    "basis_gates": simulator.configuration().basis_gates,
+    "coupling_map": simulator.configuration().coupling_map,
+    "seed_simulator": 42,
+    "shots": 1000,
+    "optimization_level": 3,
+    "resilience_level": 0
+}
 
-# noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
+noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
 
-# start_time1 = time.time()
-# qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-# result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
-# end_time1 = time.time()
+start_time1 = time.time()
+qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
+end_time1 = time.time()
 
-# print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
-# print('best measurement', result1.best_measurement)
-# print('Optimal parameters: ', result1.optimal_parameters)
-# print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
-# elapsed_time1 = end_time1 - start_time1
-# print(f"Aer Simulator run time: {elapsed_time1} seconds")
-# print('\n\n')
+print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+print('best measurement', result1.best_measurement)
+print('Optimal parameters: ', result1.optimal_parameters)
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+elapsed_time1 = end_time1 - start_time1
+print(f"Aer Simulator run time: {elapsed_time1} seconds")
+print('\n\n')
 
-# with open(file_path, "a") as file:
-#     file.write("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
-#     file.write(f"'best measurement' {result1.best_measurement}")
-#     file.write(f"Optimal parameters: {result1.optimal_parameters}")
-#     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result1.best_measurement['value'])}")
-#     file.write(f"Aer Simulator run time: {elapsed_time1} seconds")
+with open(file_path, "a") as file:
+    file.write("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+    file.write(f"'best measurement' {result1.best_measurement}")
+    file.write(f"Optimal parameters: {result1.optimal_parameters}")
+    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result1.best_measurement['value'])}")
+    file.write(f"Aer Simulator run time: {elapsed_time1} seconds")
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
@@ -278,24 +278,27 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
-# coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
+# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
-                       optimization_level=1, layout_method='trivial', routing_method='basic')
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
+                       optimization_level= 3, layout_method='dense', routing_method='stochastic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
 print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
+# %%
 ansatz_isa.decompose().draw('mpl')
 
 op_counts = ansatz_isa.count_ops()
 total_gates = sum(op_counts.values())
+depth = ansatz_isa.depth()
 print("Operation counts:", op_counts)
 print("Total number of gates:", total_gates)
+print("Depth of the circuit: ", depth)
 
 # %%
 session = Session(backend=backend)
@@ -311,7 +314,8 @@ print('best measurement', result2.best_measurement)
 print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
 
-jobs = service.jobs(session_id='crmfh9d14ys00088aq6g')
+# %%
+jobs = service.jobs(session_id='crqnc3g7m5z0008s8g1g')
 
 total_usage_time = 0
 for job in jobs:
@@ -327,7 +331,8 @@ with open(file_path, "a") as file:
     file.write(f"Optimal parameters: {result2.optimal_parameters}")
     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
-
+    file.write(f"Total number of gates: {total_gates}\n")   
+    file.write(f"Depth of circuit: {depth}\n")
 
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring

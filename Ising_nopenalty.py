@@ -9,7 +9,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/nopenalty-QAOA/2rot-4qubit"
+file_path = "RESULTS/nopenalty-QAOA/2res-2rot-4qubit"
 
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -245,17 +245,25 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-# linear_coupling_map = generate_linear_coupling_map(num_qubits)
-coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
+linear_coupling_map = generate_linear_coupling_map(num_qubits)
+# coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
                        optimization_level=1, layout_method='trivial', routing_method='basic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
 print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
+
+# %%
+ansatz_isa.decompose().draw('mpl')
+
+op_counts = ansatz_isa.count_ops()
+total_gates = sum(op_counts.values())
+print("Operation counts:", op_counts)
+print("Total number of gates:", total_gates)
 
 # %%
 session = Session(backend=backend)

@@ -320,8 +320,10 @@ ansatz_isa.decompose().draw('mpl')
 
 op_counts = ansatz_isa.count_ops()
 total_gates = sum(op_counts.values())
+depth = ansatz_isa.depth()
 print("Operation counts:", op_counts)
 print("Total number of gates:", total_gates)
+print("Depth of the circuit: ", depth)
 
 # %%
 session = Session(backend=backend)
@@ -353,6 +355,8 @@ with open(file_path, "a") as file:
     file.write(f"Optimal parameters: {result2.optimal_parameters}")
     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
+    file.write(f"Total number of gates: {total_gates}\n")
+    file.write(f"Depth of circuit: {depth}\n")
 
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring

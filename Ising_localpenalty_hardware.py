@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/7res-2rot"
+file_path = "RESULTS/localpenalty-QAOA/14res-2rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -186,10 +186,11 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-
-start_time = time.time()
 p = 1  # Number of QAOA layers
 initial_point = np.ones(2 * p)
+
+# %%
+start_time = time.time()
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 end_time = time.time()
@@ -279,7 +280,8 @@ def generate_linear_coupling_map(num_qubits):
     return CouplingMap(couplinglist=coupling_list)
 
 # linear_coupling_map = generate_linear_coupling_map(num_qubits)
-coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
+coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [4, 16], [5, 6], [6, 7], [7, 8], [8, 9], [8, 17], [9, 10], [10, 11], [11, 12], [12, 13], [12, 18], [13, 14], [15, 19], [16, 23], [17, 27], [18, 31], [19, 20], [20, 21], [21, 22], [21, 34], [22, 23], [23, 24], [24, 25], [25, 26], [26, 27]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
@@ -315,8 +317,60 @@ print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
 
 # %%
-jobs = service.jobs(session_id='crqnc3g7m5z0008s8g1g')
+jobs = service.jobs(session_id='crsn8xvx484g008f4200')
 
+for job in jobs:
+    if job.status().name == 'DONE':
+        results = job.result()
+        print("Job completed successfully")
+else:
+    print("Job status:", job.status())
+
+# %%
+from qiskit.quantum_info import Statevector, Operator
+
+def create_circuit(bitstring):
+    """Create a quantum circuit that prepares the quantum state for a given bitstring."""
+    qc = QuantumCircuit(len(bitstring))
+    for i, bit in enumerate(bitstring):
+        if bit == '1':
+            qc.x(i)
+    return qc
+
+def evaluate_energy(bitstring, operator):
+    """Evaluate the energy of a bitstring using the specified operator."""
+    circuit = create_circuit(bitstring)
+    state = Statevector.from_instruction(circuit)
+    if not isinstance(operator, Operator):
+        operator = Operator(operator)
+    
+    expectation_value = state.expectation_value(operator).real
+    return expectation_value
+
+def get_best_measurement_from_sampler_result(sampler_result, q_hamiltonian, num_qubits):
+    if not hasattr(sampler_result, 'quasi_dists') or not isinstance(sampler_result.quasi_dists, list):
+        raise ValueError("SamplerResult does not contain 'quasi_dists' as a list")
+
+    best_bitstring = None
+    lowest_energy = float('inf')
+    highest_probability = -1
+
+    for quasi_distribution in sampler_result.quasi_dists:
+        for int_bitstring, probability in quasi_distribution.items():
+            bitstring = format(int_bitstring, '0{}b'.format(num_qubits))  # Ensure bitstring is string
+            energy = evaluate_energy(bitstring, q_hamiltonian)
+            if energy < lowest_energy:
+                lowest_energy = energy
+                best_bitstring = bitstring
+                highest_probability = probability
+
+    return best_bitstring, highest_probability, lowest_energy
+
+
+best_bitstring, probability, value = get_best_measurement_from_sampler_result(results, q_hamiltonian, num_qubits)
+print(f"Best measurement: {best_bitstring} with ground state energy {value} and probability {probability}")
+
+# %%
 total_usage_time = 0
 for job in jobs:
     job_result = job.usage_estimation['quantum_seconds']
@@ -337,7 +391,8 @@ with open(file_path, "a") as file:
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
 
-measured_bitstring = result2.best_measurement['bitstring']
+# measured_bitstring = result2.best_measurement['bitstring']
+measured_bitstring = best_bitstring
 original_bitstring = ['']*num_qubits
 
 for i, logical in enumerate(index):

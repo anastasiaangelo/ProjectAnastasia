@@ -12,7 +12,7 @@ from qiskit.visualization import plot_histogram
 
 file_path = "RESULTS/creation-annihilation-QAOA/2res-4rot"
 
-qubit_per_res = 2
+qubit_per_res = 1
 num_rot = 2**qubit_per_res
 
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -229,8 +229,58 @@ print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
 
 # %%
-jobs = service.jobs(session_id='crqqdqp8a2eg0089q4ag')
+jobs = service.jobs(session_id='crqsrk22x9jg008z2qe0')
+for job in jobs:
+    if job.status().name == 'DONE':
+        results = job.result()
+        print("Job completed successfully")
+else:
+    print("Job status:", job.status())
 
+from qiskit.quantum_info import Statevector, Operator
+
+def create_circuit(bitstring):
+    """Create a quantum circuit that prepares the quantum state for a given bitstring."""
+    qc = QuantumCircuit(len(bitstring))
+    for i, bit in enumerate(bitstring):
+        if bit == '1':
+            qc.x(i)
+    return qc
+
+def evaluate_energy(bitstring, operator):
+    """Evaluate the energy of a bitstring using the specified operator."""
+    circuit = create_circuit(bitstring)
+    state = Statevector.from_instruction(circuit)
+    if not isinstance(operator, Operator):
+        operator = Operator(operator)
+    
+    expectation_value = state.expectation_value(operator).real
+    return expectation_value
+
+def get_best_measurement_from_sampler_result(sampler_result, q_hamiltonian, num_qubits):
+    if not hasattr(sampler_result, 'quasi_dists') or not isinstance(sampler_result.quasi_dists, list):
+        raise ValueError("SamplerResult does not contain 'quasi_dists' as a list")
+
+    best_bitstring = None
+    lowest_energy = float('inf')
+    highest_probability = -1
+
+    for quasi_distribution in sampler_result.quasi_dists:
+        for int_bitstring, probability in quasi_distribution.items():
+            bitstring = format(int_bitstring, '0{}b'.format(num_qubits))  # Ensure bitstring is string
+            energy = evaluate_energy(bitstring, q_hamiltonian)
+            if energy < lowest_energy:
+                lowest_energy = energy
+                best_bitstring = bitstring
+                highest_probability = probability
+
+    return best_bitstring, highest_probability, lowest_energy
+
+
+best_bitstring, probability, value = get_best_measurement_from_sampler_result(results, H_int, num_qubits)
+print(f"Best measurement: {best_bitstring} with ground state energy {value} and probability {probability}")
+
+# %%
 total_usage_time = 0
 for job in jobs:
     job_result = job.usage_estimation['quantum_seconds']
@@ -245,6 +295,5 @@ with open(file_path, "a") as file:
     file.write(f"Optimal parameters: {result2.optimal_parameters}")
     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
-    file.write(f"Total number of gates: {total_gates}\n")
+    file.write(f"Total number of gates: {total_gates}\n")   
     file.write(f"Depth of circuit: {depth}\n")
-

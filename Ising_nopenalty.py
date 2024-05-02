@@ -9,7 +9,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/nopenalty-QAOA/2res-2rot-4qubit"
+file_path = "RESULTS/nopenalty-QAOA/15res-2rot"
 
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -125,7 +125,6 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
-
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
@@ -152,10 +151,10 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 
 #the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-
-start_time = time.time()
 p = 1  # Number of QAOA layers
 initial_point = np.ones(2 * p)
+# %%
+start_time = time.time()
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
 end_time = time.time()
@@ -204,6 +203,23 @@ qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, 
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
 
+# %%
+def check_hamming(bitstring, substring_size):
+    substrings = [bitstring[i:i+substring_size] for i in range(0, len(bitstring), substring_size)]
+    return all(sub.count('1') == 1 for sub in substrings)
+
+substring_size = num_rot
+samples = result1.eigenstate
+valid_samples = []
+if samples:
+    for bitstring, probability, value in samples.items():
+        if check_hamming(bitstring, substring_size):
+            valid_samples.append((bitstring, probability, value))
+
+for bitstring, probability, value in valid_samples:
+    print(f"Bitstring: {bitstring}, Probability: {probability}, Value: {value}")
+     
+# %%
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)

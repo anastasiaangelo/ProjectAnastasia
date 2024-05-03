@@ -9,7 +9,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/nopenalty-QAOA/15res-2rot"
+file_path = "RESULTS/nopenalty-QAOA/13res-2rot"
 
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -57,6 +57,82 @@ print('\nH: \n', H)
 with open(file_path, "w") as file:
     file.write(f"H : {H} \n")
 
+# %% Brute force
+import itertools
+
+def check_hamming(bitstring, substring_size):
+    substrings = [bitstring[i:i+substring_size] for i in range(0, len(bitstring), substring_size)]
+    return all(sub.count('1') == 1 for sub in substrings)
+
+def create_circuit(bitstring):
+    """Create a quantum circuit that prepares the quantum state for a given bitstring."""
+    qc = QuantumCircuit(len(bitstring))
+    for i, bit in enumerate(bitstring):
+        if bit == '1':
+            qc.x(i)
+    return qc
+
+def evaluate_energy(bitstring, operator):
+    """Evaluate the energy of a bitstring using the specified operator."""
+    circuit = create_circuit(bitstring)
+    state = Statevector.from_instruction(circuit)
+    if not isinstance(operator, Operator):
+        operator = Operator(operator)
+    
+    expectation_value = state.expectation_value(operator).real
+    return expectation_value
+
+substring_size = num_rot
+possible_bitstrings = [''.join(x) for x in itertools.product('01', repeat=num_qubits)]
+print("Total samples:", len(possible_bitstrings))
+
+valid_samples = []
+for bitstring in possible_bitstrings: 
+    print("Checking formatted bitstring:", bitstring)
+    if check_hamming(bitstring, substring_size):
+        valid_samples.append((bitstring))
+
+print("Valid samples found:", len(valid_samples))
+
+k = 0
+for i in range(num_qubits):
+    k += 0.5 * q[i]
+
+for i in range(num_qubits):
+    for j in range(num_qubits):
+        if i != j:
+            k += 0.5 * 0.25 * Q[i][j]
+
+lowest_energy = float('inf')
+bitstring_with_lowest_energy = None
+
+for bitstring in valid_samples:
+    spins = [1 if bit == '0' else -1 for bit in bitstring]
+    energy = 0
+
+    for i in range(num_qubits):
+        for j in range(num_qubits):
+            if i != j:
+                energy += 0.5 * H[i][j] * spins[i] * spins[j]
+
+    for i in range(num_qubits):
+        energy +=  H[i][i] * spins[i]
+
+    print(f"Bitstring: {bitstring}, Value: {energy + k}")
+
+    if energy < lowest_energy:
+        lowest_energy = energy
+        bitstring_with_lowest_energy = bitstring
+
+print("Bitstring with lowest energy:", bitstring_with_lowest_energy)
+print("Ground state energy", lowest_energy + k)
+
+
+with open(file_path, "w") as file:
+    file.write("\n\nBrute force approach.\n")
+    file.write(f"Bitstring with lowest energy: {bitstring_with_lowest_energy}\n")
+    file.write(f"ground state energy: {lowest_energy}\n")
+    file.write(f"ground state energy normalised: {lowest_energy+k}\n")
 
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
@@ -170,7 +246,6 @@ with open(file_path, "a") as file:
     file.write(f"'best measurement' {result.best_measurement}\n")
     file.write(f"Local Simulation run time: {elapsed_time} seconds\n")
 
-
 # %% ############################################ Simulators ##########################################################################
 from qiskit_aer import Aer
 from qiskit_ibm_provider import IBMProvider
@@ -203,22 +278,6 @@ qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, 
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
 
-# %%
-def check_hamming(bitstring, substring_size):
-    substrings = [bitstring[i:i+substring_size] for i in range(0, len(bitstring), substring_size)]
-    return all(sub.count('1') == 1 for sub in substrings)
-
-substring_size = num_rot
-samples = result1.eigenstate
-valid_samples = []
-if samples:
-    for bitstring, probability, value in samples.items():
-        if check_hamming(bitstring, substring_size):
-            valid_samples.append((bitstring, probability, value))
-
-for bitstring, probability, value in valid_samples:
-    print(f"Bitstring: {bitstring}, Probability: {probability}, Value: {value}")
-     
 # %%
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
@@ -295,15 +354,67 @@ print('best measurement', result2.best_measurement)
 print('Optimal parameters: ', result2.optimal_parameters)
 print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
 
-jobs = service.jobs(session_id='crmfh9d14ys00088aq6g')
+# %%
+jobs = service.jobs(session_id='crk4j0r9nqa00081k6y0')
 
+for job in jobs:
+    if job.status().name == 'DONE':
+        results = job.result()
+        print("Job completed successfully")
+else:
+    print("Job status:", job.status())
+
+# %%
+from qiskit.quantum_info import Statevector, Operator
+
+def create_circuit(bitstring):
+    """Create a quantum circuit that prepares the quantum state for a given bitstring."""
+    qc = QuantumCircuit(len(bitstring))
+    for i, bit in enumerate(bitstring):
+        if bit == '1':
+            qc.x(i)
+    return qc
+
+def evaluate_energy(bitstring, operator):
+    """Evaluate the energy of a bitstring using the specified operator."""
+    circuit = create_circuit(bitstring)
+    state = Statevector.from_instruction(circuit)
+    if not isinstance(operator, Operator):
+        operator = Operator(operator)
+    
+    expectation_value = state.expectation_value(operator).real
+    return expectation_value
+
+def get_best_measurement_from_sampler_result(sampler_result, q_hamiltonian, num_qubits):
+    if not hasattr(sampler_result, 'quasi_dists') or not isinstance(sampler_result.quasi_dists, list):
+        raise ValueError("SamplerResult does not contain 'quasi_dists' as a list")
+
+    best_bitstring = None
+    lowest_energy = float('inf')
+    highest_probability = -1
+
+    for quasi_distribution in sampler_result.quasi_dists:
+        for int_bitstring, probability in quasi_distribution.items():
+            bitstring = format(int_bitstring, '0{}b'.format(num_qubits))
+            energy = evaluate_energy(bitstring, q_hamiltonian)
+            if energy < lowest_energy:
+                lowest_energy = energy
+                best_bitstring = bitstring
+                highest_probability = probability
+
+    return best_bitstring, highest_probability, lowest_energy
+
+
+best_bitstring, probability, value = get_best_measurement_from_sampler_result(results, q_hamiltonian, num_qubits)
+print(f"Best measurement: {best_bitstring} with ground state energy {value} and probability {probability}")
+
+# %%
 total_usage_time = 0
 for job in jobs:
     job_result = job.usage_estimation['quantum_seconds']
     total_usage_time += job_result
 
-print(f"Total Usage Time Hardware
-      : {total_usage_time} seconds")
+print(f"Total Usage Time Hardware: {total_usage_time} seconds")
 print('\n\n')
 
 with open(file_path, "a") as file:
@@ -312,12 +423,13 @@ with open(file_path, "a") as file:
     file.write(f"Optimal parameters: {result2.optimal_parameters}")
     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
-
+    file.write(f"Total number of gates: {total_gates}\n")   
 
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
 
-measured_bitstring = result2.best_measurement['bitstring']
+# measured_bitstring = result2.best_measurement['bitstring']
+measured_bitstring = best_bitstring
 original_bitstring = ['']*num_qubits
 
 for i, logical in enumerate(index):

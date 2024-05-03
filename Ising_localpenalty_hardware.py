@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/14res-2rot"
+file_path = "RESULTS/localpenalty-QAOA/8res-2rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -73,6 +73,16 @@ pairs = generate_pairs(N)
 M = deepcopy(H)
 M = add_penalty_term(M, P, pairs)
 
+k = 0
+for i in range(num_qubits):
+    k += 0.5 * q[i]
+
+for i in range(num_qubits):
+    for j in range(num_qubits):
+        if i != j:
+            k += 0.5 * 0.25 * Q[i][j]
+
+
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh
 
@@ -123,14 +133,14 @@ H_tot = C + H_penalty
 # using sparse representation so as to be able to generalise to larger systems
 eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 print("\n\nClassical optimisation results. \n")
-print("Ground energy eigsh: ", eigenvalues[0])
+print("Ground energy eigsh: ", eigenvalues[0] + N*P + k)
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 print('\n\n')
 
 with open(file_path, "a") as file:
     file.write("\n\nClassical optimisation results.\n")
     file.write(f"Ground energy eigsh: {eigenvalues[0]}\n")
-    file.write(f"Ground state wavefunction eigsh: {eigenvectors[:,0]}\n")
+    file.write(f"Ground state wavefunction eigsh: {eigenvectors[:,0] +N*P + k}\n")
 
 
 # %% ############################################ Quantum optimisation ########################################################################
@@ -197,6 +207,7 @@ end_time = time.time()
 
 print("\n\nThe result of the quantum optimisation using QAOA is: \n")
 print('best measurement', result.best_measurement)
+print('The ground state energy with QAOA is: ', np.real(result.best_measurement['value'] + N*P + k))
 elapsed_time = end_time - start_time
 print(f"Local Simulation run time: {elapsed_time} seconds")
 print('\n\n')
@@ -204,6 +215,7 @@ print('\n\n')
 with open(file_path, "a") as file:
     file.write("\n\nThe result of the quantum optimisation using QAOA is: \n")
     file.write(f"'best measurement' {result.best_measurement}\n")
+    file.write(f"The ground state energy with QAOA is: {np.real(result.best_measurement['value'] + N*P + k)}")
     file.write(f"Local Simulation run time: {elapsed_time} seconds\n")
 
 
@@ -242,7 +254,7 @@ end_time1 = time.time()
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
-print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']))
+print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']) + N*P + k)
 elapsed_time1 = end_time1 - start_time1
 print(f"Aer Simulator run time: {elapsed_time1} seconds")
 print('\n\n')
@@ -251,7 +263,7 @@ with open(file_path, "a") as file:
     file.write("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
     file.write(f"'best measurement' {result1.best_measurement}")
     file.write(f"Optimal parameters: {result1.optimal_parameters}")
-    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result1.best_measurement['value'])}")
+    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result1.best_measurement['value']) + N*P + k}")
     file.write(f"Aer Simulator run time: {elapsed_time1} seconds")
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
@@ -314,7 +326,7 @@ result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
 print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
 print('best measurement', result2.best_measurement)
 print('Optimal parameters: ', result2.optimal_parameters)
-print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']))
+print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']) + N*P + k)
 
 # %%
 jobs = service.jobs(session_id='crsn8xvx484g008f4200')
@@ -325,50 +337,6 @@ for job in jobs:
         print("Job completed successfully")
 else:
     print("Job status:", job.status())
-
-# %%
-from qiskit.quantum_info import Statevector, Operator
-
-def create_circuit(bitstring):
-    """Create a quantum circuit that prepares the quantum state for a given bitstring."""
-    qc = QuantumCircuit(len(bitstring))
-    for i, bit in enumerate(bitstring):
-        if bit == '1':
-            qc.x(i)
-    return qc
-
-def evaluate_energy(bitstring, operator):
-    """Evaluate the energy of a bitstring using the specified operator."""
-    circuit = create_circuit(bitstring)
-    state = Statevector.from_instruction(circuit)
-    if not isinstance(operator, Operator):
-        operator = Operator(operator)
-    
-    expectation_value = state.expectation_value(operator).real
-    return expectation_value
-
-def get_best_measurement_from_sampler_result(sampler_result, q_hamiltonian, num_qubits):
-    if not hasattr(sampler_result, 'quasi_dists') or not isinstance(sampler_result.quasi_dists, list):
-        raise ValueError("SamplerResult does not contain 'quasi_dists' as a list")
-
-    best_bitstring = None
-    lowest_energy = float('inf')
-    highest_probability = -1
-
-    for quasi_distribution in sampler_result.quasi_dists:
-        for int_bitstring, probability in quasi_distribution.items():
-            bitstring = format(int_bitstring, '0{}b'.format(num_qubits))  # Ensure bitstring is string
-            energy = evaluate_energy(bitstring, q_hamiltonian)
-            if energy < lowest_energy:
-                lowest_energy = energy
-                best_bitstring = bitstring
-                highest_probability = probability
-
-    return best_bitstring, highest_probability, lowest_energy
-
-
-best_bitstring, probability, value = get_best_measurement_from_sampler_result(results, q_hamiltonian, num_qubits)
-print(f"Best measurement: {best_bitstring} with ground state energy {value} and probability {probability}")
 
 # %%
 total_usage_time = 0
@@ -383,7 +351,7 @@ with open(file_path, "a") as file:
     file.write("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
     file.write(f"'best measurement' {result2.best_measurement}")
     file.write(f"Optimal parameters: {result2.optimal_parameters}")
-    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value'])}")
+    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value']) + N*P + k}")
     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
     file.write(f"Total number of gates: {total_gates}\n")   
     file.write(f"Depth of circuit: {depth}\n")
@@ -391,8 +359,7 @@ with open(file_path, "a") as file:
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
 
-# measured_bitstring = result2.best_measurement['bitstring']
-measured_bitstring = best_bitstring
+measured_bitstring = result2.best_measurement['bitstring']
 original_bitstring = ['']*num_qubits
 
 for i, logical in enumerate(index):

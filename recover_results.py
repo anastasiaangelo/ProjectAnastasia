@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/sessionid/8res-2rot"
+file_path = "RESULTS/sessionid/4res-2rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -19,8 +19,8 @@ num_qubits = num
 
 print('Qii values: \n', q)
 
-df = pd.read_csv("energy_files/two_body_terms.csv")
-value = df['E_ij'].values
+df2 = pd.read_csv("energy_files/two_body_terms.csv")
+value = df2['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
@@ -170,7 +170,7 @@ print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
 
 # %%
-jobs = service.jobs(session_id='crqnc3g7m5z0008s8g1g')
+jobs = service.jobs(session_id='crk4j0r9nqa00081k6y0')
 
 for job in jobs:
     if job.status().name == 'DONE':
@@ -180,6 +180,9 @@ else:
     print("Job status:", job.status())
 
 # %%
+from qiskit_aer.primitives import Estimator
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import Aer
 k = 0
 for i in range(num_qubits):
     k += 0.5 * q[i]
@@ -189,19 +192,39 @@ for i in range(num_qubits):
         if i != j:
             k += 0.5 * 0.25 * Q[i][j]
 
-def classic_energy_eval(bitstring):
-    spins = [1 if bit == '0' else -1 for bit in bitstring]
-    energy = 0
+def check_hamming(bitstring, substring_size):
+    """Check if each substring contains exactly one '1'."""
+    substrings = [bitstring[i:i+substring_size] for i in range(0, len(bitstring), substring_size)]
+    return all(sub.count('1') == 1 for sub in substrings)
 
-    for i in range(num_qubits):
-        for j in range(num_qubits):
-            if i != j:
-                energy += 0.5 * M[i][j] * spins[i] * spins[j]
+def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
+    """
+    Calculate the energy of a given bitstring for a specified Hamiltonian.
 
-    for i in range(num_qubits):
-        energy += M[i][i] * spins[i]
+    Args:
+        bitstring (str): The bitstring for which to calculate the energy.
+        hamiltonian (SparsePauliOp): The Hamiltonian operator of the system, defined as a SparsePauliOp.
+        backend (qiskit.providers.Backend): The quantum backend to execute circuits.
 
-    return energy
+    Returns:
+        float: The calculated energy of the bitstring.
+    """
+    # Prepare the quantum circuit for the bitstring
+    num_qubits = len(bitstring)
+    qc = QuantumCircuit(num_qubits)
+    for i, char in enumerate(bitstring):
+        if char == '1':
+            qc.x(i)  # Apply X gate if the bit in the bitstring is 1
+    
+    # Use Aer's statevector simulator if no backend provided
+    if backend is None:
+        backend = Aer.get_backend('aer_simulator_statevector')
+
+    qc = transpile(qc, backend, coupling_map=linear_coupling_map)
+    estimator = Estimator()
+    resultt = estimator.run(observables=[hamiltonian], circuits=[qc], backend=backend).result()
+
+    return resultt.values[0].real
 
 def get_best_measurement_from_sampler_result(sampler_result, num_qubits):
     if not hasattr(sampler_result, 'quasi_dists') or not isinstance(sampler_result.quasi_dists, list):
@@ -214,12 +237,13 @@ def get_best_measurement_from_sampler_result(sampler_result, num_qubits):
     for quasi_distribution in sampler_result.quasi_dists:
         for int_bitstring, probability in quasi_distribution.items():
             bitstring = format(int_bitstring, '0{}b'.format(num_qubits))
-            energy = classic_energy_eval(bitstring)
-            print(f"Bitstring: {bitstring}, Energy: {energy}, Probability: {probability}")
-            if energy < lowest_energy:
-                lowest_energy = energy
-                best_bitstring = bitstring
-                highest_probability = probability
+            if check_hamming(bitstring, num_rot):
+                energy = calculate_bitstring_energy(bitstring, q_hamiltonian, backend)
+                print(f"Bitstring: {bitstring}, Energy: {energy}, Probability: {probability}")
+                if energy < lowest_energy:
+                    lowest_energy = energy
+                    best_bitstring = bitstring
+                    highest_probability = probability
 
     return best_bitstring, highest_probability, lowest_energy
 
@@ -235,10 +259,15 @@ for job in jobs:
 print(f"Total Usage Time Hardware: {total_usage_time} seconds")
 print('\n\n')
 
-with open(file_path, "a") as file:
-    file.write("\n\nThe retrieved result of the noisy quantum optimisation using QAOAAnsatz is: \n")
-    file.write(f"Best measurement: {best_bitstring} with ground state energy {value} and probability {probability}")
-
+data = {
+        "Experiment": ["Hardware simulation QAOAAnsatz"],
+        "Ground State Energy": [value+N*P+k],
+        "Best Measurement": [best_bitstring],
+        "Execution Time (seconds)": [total_usage_time],
+        "Number of qubits": [num_qubits]
+}
+df = pd.DataFrame(data)
+df.to_csv(file_path, index=False)
 
 # %%
 index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
@@ -251,5 +280,3 @@ for i, logical in enumerate(index):
 
 original_bitstring = ''.join(original_bitstring)
 print("Original bitstring:", original_bitstring)
-
-# %%

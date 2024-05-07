@@ -8,7 +8,8 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/8res-2rot"
+file_path = "RESULTS/localpenalty-QAOA/4res-2rot.csv"
+# file_path_depth = "RESULTS/Depths/localpenalty-QAOA/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -19,8 +20,8 @@ num_qubits = num
 
 print('Qii values: \n', q)
 
-df = pd.read_csv("energy_files/two_body_terms.csv")
-value = df['E_ij'].values
+df2 = pd.read_csv("energy_files/two_body_terms.csv")
+value = df2['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
@@ -51,9 +52,6 @@ for i in range(num):
     H[i][i] = -(0.5 * q[i] + sum(0.25 * Q[i][j] for j in range(num) if j != i))
 
 print('\nH: \n', H)
-
-with open(file_path, "w") as file:
-    file.write(f"H : {H} \n")
 
 # add penalty terms to the matrix so as to discourage the selection of two rotamers on the same residue - implementation of the Hammings constraint
 def add_penalty_term(M, penalty_constant, residue_pairs):
@@ -137,12 +135,6 @@ print("Ground energy eigsh: ", eigenvalues[0] + N*P + k)
 print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
 print('\n\n')
 
-with open(file_path, "a") as file:
-    file.write("\n\nClassical optimisation results.\n")
-    file.write(f"Ground energy eigsh: {eigenvalues[0]}\n")
-    file.write(f"Ground state wavefunction eigsh: {eigenvectors[:,0] +N*P + k}\n")
-
-
 # %% ############################################ Quantum optimisation ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
@@ -212,13 +204,6 @@ elapsed_time = end_time - start_time
 print(f"Local Simulation run time: {elapsed_time} seconds")
 print('\n\n')
 
-with open(file_path, "a") as file:
-    file.write("\n\nThe result of the quantum optimisation using QAOA is: \n")
-    file.write(f"'best measurement' {result.best_measurement}\n")
-    file.write(f"The ground state energy with QAOA is: {np.real(result.best_measurement['value'] + N*P + k)}")
-    file.write(f"Local Simulation run time: {elapsed_time} seconds\n")
-
-
 # %% ############################################ Simulators ##########################################################################
 from qiskit_aer import Aer
 from qiskit_ibm_provider import IBMProvider
@@ -251,6 +236,77 @@ qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, 
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
 
+# %%
+from qiskit_aer.primitives import Estimator
+from qiskit import QuantumCircuit, transpile
+
+eigenstate_distribution = result1.eigenstate
+best_measurement = result1.best_measurement
+
+bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
+
+def int_to_bitstring(state, total_bits):
+    """Converts an integer state to a binary bitstring with padding of leading zeros."""
+    return format(state, '0{}b'.format(total_bits))
+
+def check_hamming(bitstring, substring_size):
+    """Check if each substring contains exactly one '1'."""
+    substrings = [bitstring[i:i+substring_size] for i in range(0, len(bitstring), substring_size)]
+    return all(sub.count('1') == 1 for sub in substrings)
+
+def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
+    """
+    Calculate the energy of a given bitstring for a specified Hamiltonian.
+
+    Args:
+        bitstring (str): The bitstring for which to calculate the energy.
+        hamiltonian (SparsePauliOp): The Hamiltonian operator of the system, defined as a SparsePauliOp.
+        backend (qiskit.providers.Backend): The quantum backend to execute circuits.
+
+    Returns:
+        float: The calculated energy of the bitstring.
+    """
+    # Prepare the quantum circuit for the bitstring
+    num_qubits = len(bitstring)
+    qc = QuantumCircuit(num_qubits)
+    for i, char in enumerate(bitstring):
+        if char == '1':
+            qc.x(i)  # Apply X gate if the bit in the bitstring is 1
+    
+    # Use Aer's statevector simulator if no backend provided
+    if backend is None:
+        backend = Aer.get_backend('aer_simulator_statevector')
+
+    qc = transpile(qc, backend)
+    estimator = Estimator()
+    resultt = estimator.run(observables=[hamiltonian], circuits=[qc], backend=backend).result()
+
+    return resultt.values[0].real
+
+filtered_bitstrings = {
+    int_to_bitstring(state, num_qubits): prob
+    for state, prob in bitstrings.items()
+    if check_hamming(int_to_bitstring(state, num_qubits), num_rot)
+}
+sorted_bitstrings = sorted(filtered_bitstrings.items(), key=lambda x: x[1], reverse=True)
+
+print("Best Measurement:", best_measurement)
+for bitstring, probability in sorted_bitstrings:
+    energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
+    print(f"Bitstring: {bitstring}, Probability: {probability}, Energy: {energy}")
+
+found = False
+for bitstring, _ in sorted_bitstrings:
+    if bitstring == best_measurement['bitstring']:
+        print('Best measurement bitstring respects Hammings conditions.\n')
+        found = True
+        break
+
+if not found:
+    print('Best measurement bitstring does not respect Hammings conditions, look for another possible solution.\n')
+
+# %%
+
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)
@@ -259,12 +315,16 @@ elapsed_time1 = end_time1 - start_time1
 print(f"Aer Simulator run time: {elapsed_time1} seconds")
 print('\n\n')
 
-with open(file_path, "a") as file:
-    file.write("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
-    file.write(f"'best measurement' {result1.best_measurement}")
-    file.write(f"Optimal parameters: {result1.optimal_parameters}")
-    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result1.best_measurement['value']) + N*P + k}")
-    file.write(f"Aer Simulator run time: {elapsed_time1} seconds")
+data = {
+    "Experiment": ["Aer Simulation local penalty QAOA"],
+    "Ground State Energy": [np.real(result1.best_measurement['value'] + N*P + k)],
+    "Best Measurement": [result1.best_measurement],
+    "Execution Time (seconds)": [elapsed_time1],
+    "Number of qubits": [num_qubits]
+}
+
+df = pd.DataFrame(data)
+df.to_csv(file_path, index=False)
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
@@ -291,9 +351,16 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+linear_coupling_map = generate_linear_coupling_map(num_qubits)
 # coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
-coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [4, 16], [5, 6], [6, 7], [7, 8], [8, 9], [8, 17], [9, 10], [10, 11], [11, 12], [12, 13], [12, 18], [13, 14], [15, 19], [16, 23], [17, 27], [18, 31], [19, 20], [20, 21], [21, 22], [21, 34], [22, 23], [23, 24], [24, 25], [25, 26], [26, 27]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [25, 35], [26, 25], [26, 27], [27, 17], [27, 26]])
+coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [4, 16], [5, 6], [6, 7], [7, 8], [8, 9], [8, 17], [9, 10], [10, 11], [11, 12], [12, 13], [12, 18], [13, 14], [15, 19], [16, 23], [17, 27], [18, 31], [19, 20], [20, 21], [21, 22], [21, 34], [22, 23], [23, 24], [24, 25], [25, 26], [26, 27]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
@@ -313,6 +380,16 @@ depth = ansatz_isa.depth()
 print("Operation counts:", op_counts)
 print("Total number of gates:", total_gates)
 print("Depth of the circuit: ", depth)
+
+data_depth = {
+    "Experiment": ["Hardware local penalty QAOA"],
+    "Total number of gates": [total_gates],
+    "Depth of the circuit": [depth]
+}
+
+df_depth = pd.DataFrame(data_depth)
+df_depth.to_csv(file_path_depth, index=False)
+
 
 # %%
 session = Session(backend=backend)
@@ -367,3 +444,15 @@ for i, logical in enumerate(index):
 
 original_bitstring = ''.join(original_bitstring)
 print("Original bitstring:", original_bitstring)
+
+data = {
+    "Experiment": ["Classical Optimisation", "Quantum Optimisation (QAOA)", "Noisy Quantum Optimisation (Aer Simulator)", "Quantum Optimisation (QAOAAnsatz)"],
+    "Ground State Energy": [eigenvalues[0], result.optimal_value + k, np.real(result1.best_measurement['value'] + k), np.real(result2.best_measurement['value'])],
+    "Best Measurement": ["N/A", result.optimal_parameters, result1.best_measurement, result2.best_measurement],
+    "Optimal Parameters": ["N/A", "N/A", "N/A", result2.optimal_parameters],
+    "Execution Time (seconds)": [elapsed_time, elapsed_time, elapsed_time1, total_usage_time],
+    "Total Gates": ["N/A", "N/A", total_gates, total_gates],
+    "Circuit Depth": ["N/A", "N/A", depth, depth]
+}
+
+df.to_csv(file_path, index=False)

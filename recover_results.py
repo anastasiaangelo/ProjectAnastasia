@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/sessionid/13res-2rot"
+file_path = "RESULTS/sessionid/8res-2rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -137,7 +137,7 @@ from qiskit import transpile, QuantumCircuit, QuantumRegister
 from qiskit.transpiler import CouplingMap, Layout
 
 service = QiskitRuntimeService()
-backend = service.backend("ibm_nazca")
+backend = service.backend("ibm_torino")
 print('Coupling Map of hardware: ', backend.configuration().coupling_map)
 
 ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
@@ -154,14 +154,14 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+linear_coupling_map = generate_linear_coupling_map(num_qubits)
 # coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [4, 16], [5, 6], [6, 7], [7, 8], [8, 9], [8, 17], [9, 10], [10, 11], [11, 12], [12, 13], [12, 18], [13, 14], [15, 19], [16, 23], [17, 27], [18, 31], [19, 20], [20, 21], [21, 22], [21, 34], [22, 23], [23, 24], [24, 25], [25, 26], [26, 27]])
-coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 14], [1, 2], [3, 2], [3, 4], [4, 15], [5, 4], [6, 5], [6, 7], [7, 8], [8, 16], [9, 8], [9, 10], [10, 11], [12, 11], [13, 12], [15, 22], [17, 12], [17, 30], [18, 14], [18, 19], [20, 19], [20, 21], [20, 33], [21, 22], [23, 22], [24, 23], [25, 24]]) #nazca 26 qubits
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 14], [1, 2], [3, 2], [3, 4], [4, 15], [5, 4], [6, 5], [6, 7], [7, 8], [8, 16], [9, 8], [9, 10], [10, 11], [12, 11], [13, 12], [15, 22], [17, 12], [17, 30], [18, 14], [18, 19], [20, 19], [20, 21], [20, 33], [21, 22], [23, 22], [24, 23], [25, 24]]) #nazca 26 qubits
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
                        optimization_level= 3, layout_method='dense', routing_method='stochastic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
@@ -170,7 +170,7 @@ print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
 
 # %%
-jobs = service.jobs(session_id='crrdap27jqmg008z9m00')
+jobs = service.jobs(session_id='crqnc3g7m5z0008s8g1g')
 
 for job in jobs:
     if job.status().name == 'DONE':
@@ -189,20 +189,19 @@ for i in range(num_qubits):
         if i != j:
             k += 0.5 * 0.25 * Q[i][j]
 
-def classic_energy_eval(bitstring, k):
+def classic_energy_eval(bitstring):
     spins = [1 if bit == '0' else -1 for bit in bitstring]
     energy = 0
 
     for i in range(num_qubits):
         for j in range(num_qubits):
             if i != j:
-                energy += 0.5 * H[i][j] * spins[i] * spins[j]
+                energy += 0.5 * M[i][j] * spins[i] * spins[j]
 
     for i in range(num_qubits):
-        energy += H[i][i] * spins[i]
+        energy += M[i][i] * spins[i]
 
-    return energy + k
-
+    return energy
 
 def get_best_measurement_from_sampler_result(sampler_result, num_qubits):
     if not hasattr(sampler_result, 'quasi_dists') or not isinstance(sampler_result.quasi_dists, list):
@@ -216,6 +215,7 @@ def get_best_measurement_from_sampler_result(sampler_result, num_qubits):
         for int_bitstring, probability in quasi_distribution.items():
             bitstring = format(int_bitstring, '0{}b'.format(num_qubits))
             energy = classic_energy_eval(bitstring)
+            print(f"Bitstring: {bitstring}, Energy: {energy}, Probability: {probability}")
             if energy < lowest_energy:
                 lowest_energy = energy
                 best_bitstring = bitstring
@@ -224,7 +224,7 @@ def get_best_measurement_from_sampler_result(sampler_result, num_qubits):
     return best_bitstring, highest_probability, lowest_energy
 
 best_bitstring, probability, value = get_best_measurement_from_sampler_result(results, num_qubits)
-print(f"Best measurement: {best_bitstring} with ground state energy {value} and probability {probability}")
+print(f"Best measurement: {best_bitstring} with ground state energy {value+N*P+k} and probability {probability}")
 
 # %%
 total_usage_time = 0
@@ -251,3 +251,5 @@ for i, logical in enumerate(index):
 
 original_bitstring = ''.join(original_bitstring)
 print("Original bitstring:", original_bitstring)
+
+# %%

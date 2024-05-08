@@ -9,7 +9,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/nopenalty-QAOA/13res-2rot"
+file_path = "RESULTS/nopenalty-QAOA/7res-2rot.csv"
 
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -53,9 +53,6 @@ for i in range(num):
     H[i][i] = -(0.5 * q[i] + sum(0.25 * Q[i][j] for j in range(num) if j != i))
 
 print('\nH: \n', H)
-
-with open(file_path, "w") as file:
-    file.write(f"H : {H} \n")
 
 # %% Brute force
 import itertools
@@ -127,12 +124,16 @@ for bitstring in valid_samples:
 print("Bitstring with lowest energy:", bitstring_with_lowest_energy)
 print("Ground state energy", lowest_energy + k)
 
+data = {
+    "Experiment": ["Aer Simulation XY QAOA"],
+    "Ground State Energy": [lowest_energy + k],
+    "Best Measurement": [bitstring_with_lowest_energy],
+    "Execution Time (seconds)": ["N/A"],
+    "Number of qubits": [num_qubits]
+}
 
-with open(file_path, "w") as file:
-    file.write("\n\nBrute force approach.\n")
-    file.write(f"Bitstring with lowest energy: {bitstring_with_lowest_energy}\n")
-    file.write(f"ground state energy: {lowest_energy}\n")
-    file.write(f"ground state energy normalised: {lowest_energy+k}\n")
+df = pd.DataFrame(data)
+df.to_csv(file_path, index=False)
 
 # %% ################################################ Classical optimisation ###########################################################
 from scipy.sparse.linalg import eigsh

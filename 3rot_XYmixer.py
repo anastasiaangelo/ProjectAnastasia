@@ -8,7 +8,7 @@ import time
 from copy import deepcopy
 
 num_rot = 3
-file_path = "RESULTS/XY-QAOA/2res-3rot"
+file_path = "RESULTS/XY-QAOA/5res-3rot"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -24,19 +24,20 @@ value = df['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
-for i in range(0, num-2):
-    if i%2 == 0:
-        Q[i][i+2] = deepcopy(value[n])
-        Q[i+2][i] = deepcopy(value[n])
-        Q[i][i+3] = deepcopy(value[n+1])
-        Q[i+3][i] = deepcopy(value[n+1])
-        n += 2
-    elif i%2 != 0:
-        Q[i][i+1] = deepcopy(value[n])
-        Q[i+1][i] = deepcopy(value[n])
-        Q[i][i+2] = deepcopy(value[n+1])
-        Q[i+2][i] = deepcopy(value[n+1])
-        n += 2
+for i in range(0, num):
+    if n + 1 < len(value):
+        if i%2 == 0 and i + 3 < num:
+            Q[i][i+2] = deepcopy(value[n])
+            Q[i+2][i] = deepcopy(value[n])
+            Q[i][i+3] = deepcopy(value[n+1])
+            Q[i+3][i] = deepcopy(value[n+1])
+            n += 2
+        elif i%2 != 0 and i + 2 < num:
+            Q[i][i+1] = deepcopy(value[n])
+            Q[i+1][i] = deepcopy(value[n])
+            Q[i][i+2] = deepcopy(value[n+1])
+            Q[i+2][i] = deepcopy(value[n+1])
+            n += 2
 
 print('\nQij values: \n', Q)
 
@@ -202,6 +203,7 @@ def generate_initial_bitstring(num_qubits):
     bitstring = (pattern * (num_qubits // 3 + 1))[:num_qubits]
     return bitstring
 
+# %%
 initial_bitstring = generate_initial_bitstring(num_qubits)
 state_vector = np.zeros(2**num_qubits)
 indexx = int(initial_bitstring, 2)

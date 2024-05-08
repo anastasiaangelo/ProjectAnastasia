@@ -9,7 +9,7 @@ from copy import deepcopy
 
 num_rot = 2
 file_path = "RESULTS/localpenalty-QAOA/4res-2rot.csv"
-# file_path_depth = "RESULTS/Depths/localpenalty-QAOA/15res-2rot.csv"
+file_path_depth = "RESULTS/Depths/localpenalty-QAOA/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -60,14 +60,12 @@ def add_penalty_term(M, penalty_constant, residue_pairs):
         
     return M
 
-P = 6
-
 def generate_pairs(N):
     pairs = [(i, i+1) for i in range(0, 2*N, 2)]
     return pairs
 
+P = 6
 pairs = generate_pairs(N)
-
 M = deepcopy(H)
 M = add_penalty_term(M, P, pairs)
 
@@ -128,7 +126,6 @@ H_penalty = create_hamiltonian(pairs, P, num_qubits)
 H_tot = C + H_penalty
 
 # Extract the ground state energy and wavefunction
-# using sparse representation so as to be able to generalise to larger systems
 eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
 print("\n\nClassical optimisation results. \n")
 print("Ground energy eigsh: ", eigenvalues[0] + N*P + k)
@@ -161,7 +158,6 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
-
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
@@ -186,12 +182,11 @@ def format_sparsepauliop(op):
 
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
-#the mixer in QAOA should be a quantum operator representing transitions between configurations
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 p = 1  # Number of QAOA layers
 initial_point = np.ones(2 * p)
 
-# %%
+# %% Local simulation, too slow when big sizes
 start_time = time.time()
 qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
@@ -204,7 +199,7 @@ elapsed_time = end_time - start_time
 print(f"Local Simulation run time: {elapsed_time} seconds")
 print('\n\n')
 
-# %% ############################################ Simulators ##########################################################################
+# %% ############################################ Noisy Simulators ##########################################################################
 from qiskit_aer import Aer
 from qiskit_ibm_provider import IBMProvider
 from qiskit_aer.noise import NoiseModel
@@ -235,15 +230,11 @@ start_time1 = time.time()
 qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
+elapsed_time1 = end_time1 - start_time1
 
 # %%
 from qiskit_aer.primitives import Estimator
 from qiskit import QuantumCircuit, transpile
-
-eigenstate_distribution = result1.eigenstate
-best_measurement = result1.best_measurement
-
-bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
 
 def int_to_bitstring(state, total_bits):
     """Converts an integer state to a binary bitstring with padding of leading zeros."""
@@ -283,45 +274,50 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
 
     return resultt.values[0].real
 
-filtered_bitstrings = {
-    int_to_bitstring(state, num_qubits): prob
-    for state, prob in bitstrings.items()
-    if check_hamming(int_to_bitstring(state, num_qubits), num_rot)
-}
-sorted_bitstrings = sorted(filtered_bitstrings.items(), key=lambda x: x[1], reverse=True)
 
-print("Best Measurement:", best_measurement)
-for bitstring, probability in sorted_bitstrings:
-    energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
-    print(f"Bitstring: {bitstring}, Probability: {probability}, Energy: {energy}")
+eigenstate_distribution = result1.eigenstate
+best_measurement = result1.best_measurement
+
+bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
+
+bitstring_data = {}
+for state, prob in bitstrings.items():
+    bitstring = int_to_bitstring(state, num_qubits)
+    if check_hamming(bitstring, num_rot):
+        energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
+        bitstring_data[bitstring] = {'probability': prob, 'energy': energy}
+
+sorted_bitstrings = sorted(bitstring_data.items(), key=lambda x: x[1]['energy'])
+
+print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+for bitstring, data in sorted_bitstrings:
+    print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}")
 
 found = False
-for bitstring, _ in sorted_bitstrings:
+for bitstring, data in sorted_bitstrings:
     if bitstring == best_measurement['bitstring']:
         print('Best measurement bitstring respects Hammings conditions.\n')
+        print('Ground state energy: ', data['energy']+N*P+k)
+        data = {
+            "Experiment": ["Aer Simulation local penalty QAOA"],
+            "Ground State Energy": [np.real(result1.best_measurement['value'] + N*P + k)],
+            "Best Measurement": [result1.best_measurement],
+            "Execution Time (seconds)": [elapsed_time1],
+            "Number of qubits": [num_qubits]
+}
         found = True
         break
 
 if not found:
-    print('Best measurement bitstring does not respect Hammings conditions, look for another possible solution.\n')
-
-# %%
-
-print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
-print('best measurement', result1.best_measurement)
-print('Optimal parameters: ', result1.optimal_parameters)
-print('The ground state energy with noisy QAOA is: ', np.real(result1.best_measurement['value']) + N*P + k)
-elapsed_time1 = end_time1 - start_time1
-print(f"Aer Simulator run time: {elapsed_time1} seconds")
-print('\n\n')
-
-data = {
-    "Experiment": ["Aer Simulation local penalty QAOA"],
-    "Ground State Energy": [np.real(result1.best_measurement['value'] + N*P + k)],
-    "Best Measurement": [result1.best_measurement],
-    "Execution Time (seconds)": [elapsed_time1],
-    "Number of qubits": [num_qubits]
-}
+    print('Best measurement bitstring does not respect Hammings conditions, take the sorted bitstring corresponding to the smallest energy.\n')
+    post_selected_bitstring, post_selected_energy = sorted_bitstrings[0]
+    data = {
+        "Experiment": ["Aer Simulation local penalty QAOA, post-selected"],
+        "Ground State Energy": [post_selected_energy['energy'] + N*P + k],
+        "Best Measurement": [post_selected_bitstring],
+        "Execution Time (seconds)": [elapsed_time1],
+        "Number of qubits": [num_qubits]
+    }
 
 df = pd.DataFrame(data)
 df.to_csv(file_path, index=False)

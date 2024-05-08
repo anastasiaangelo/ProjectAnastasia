@@ -4,11 +4,10 @@
 # %%
 import numpy as np
 import pandas as pd
-import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/sessionid/4res-2rot"
+file_path = "RESULTS/sessionid/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -74,10 +73,7 @@ M = deepcopy(H)
 M = add_penalty_term(M, P, pairs)
 
 # %% ############################################ Quantum optimisation ########################################################################
-from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
-from qiskit_algorithms.optimizers import COBYLA
-from qiskit.primitives import Sampler
 
 def X_op(i, num_qubits):
     """Return an X Pauli operator on the specified qubit in a num-qubit system."""
@@ -131,8 +127,7 @@ initial_point = np.ones(2 * p)
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
-from qiskit_algorithms import SamplingVQE
-from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
+from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit import transpile, QuantumCircuit, QuantumRegister
 from qiskit.transpiler import CouplingMap, Layout
 
@@ -154,14 +149,15 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
+# linear_coupling_map = generate_linear_coupling_map(num_qubits)
 # coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [4, 16], [5, 6], [6, 7], [7, 8], [8, 9], [8, 17], [9, 10], [10, 11], [11, 12], [12, 13], [12, 18], [13, 14], [15, 19], [16, 23], [17, 27], [18, 31], [19, 20], [20, 21], [21, 22], [21, 34], [22, 23], [23, 24], [24, 25], [25, 26], [26, 27]])
+coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [18, 31], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [21, 34], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [25, 35], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 14], [1, 2], [3, 2], [3, 4], [4, 15], [5, 4], [6, 5], [6, 7], [7, 8], [8, 16], [9, 8], [9, 10], [10, 11], [12, 11], [13, 12], [15, 22], [17, 12], [17, 30], [18, 14], [18, 19], [20, 19], [20, 21], [20, 33], [21, 22], [23, 22], [24, 23], [25, 24]]) #nazca 26 qubits
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
                        optimization_level= 3, layout_method='dense', routing_method='stochastic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
@@ -170,7 +166,7 @@ print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
 
 # %%
-jobs = service.jobs(session_id='crk4j0r9nqa00081k6y0')
+jobs = service.jobs(session_id='crsn8xvx484g008f4200')
 
 for job in jobs:
     if job.status().name == 'DONE':
@@ -220,7 +216,7 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
     if backend is None:
         backend = Aer.get_backend('aer_simulator_statevector')
 
-    qc = transpile(qc, backend, coupling_map=linear_coupling_map)
+    qc = transpile(qc, backend, coupling_map=coupling_map)
     estimator = Estimator()
     resultt = estimator.run(observables=[hamiltonian], circuits=[qc], backend=backend).result()
 

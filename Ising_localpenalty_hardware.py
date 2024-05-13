@@ -8,8 +8,8 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/4res-2rot.csv"
-file_path_depth = "RESULTS/Depths/localpenalty-QAOA/15res-2rot.csv"
+file_path = "RESULTS/localpenalty-QAOA/10res-2rot.csv"
+file_path_depth = "RESULTS/Depths/localpenalty-QAOA-basic/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -219,11 +219,20 @@ options= {
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
-    "shots": 1000,
+    "shots": 5000,
     "optimization_level": 3,
     "resilience_level": 0
 }
 
+def callback(quasi_dists, parameters, energy):
+    intermediate_data.append({
+        'quasi_distributions': quasi_dists,
+        'parameters': parameters,
+        'energy': energy
+    })
+
+p = 1
+intermediate_data = []
 noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
 
 start_time1 = time.time()
@@ -277,19 +286,36 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
 
 eigenstate_distribution = result1.eigenstate
 best_measurement = result1.best_measurement
+final_bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
 
-bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
-
-bitstring_data = {}
-for state, prob in bitstrings.items():
+all_bitstrings = {}
+for state, prob in final_bitstrings.items():
     bitstring = int_to_bitstring(state, num_qubits)
     if check_hamming(bitstring, num_rot):
+        if bitstring not in all_bitstrings:
+            all_bitstrings[bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
+        all_bitstrings[bitstring]['probability'] += prob  # Aggregate probabilities
         energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
-        bitstring_data[bitstring] = {'probability': prob, 'energy': energy}
+        all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
+        all_bitstrings[bitstring]['count'] += 1
 
-sorted_bitstrings = sorted(bitstring_data.items(), key=lambda x: x[1]['energy'])
+for data in intermediate_data:
+    print(f"Quasi Distribution: {data['quasi_distributions']}, Parameters: {data['parameters']}, Energy: {data['energy']}")
+    for distribution in data['quasi_distributions']:
+        for int_bitstring, probability in distribution.items():
+            intermediate_bitstring = int_to_bitstring(int_bitstring, num_qubits)
+            if check_hamming(intermediate_bitstring, num_rot):
+                if intermediate_bitstring not in all_bitstrings:
+                    all_bitstrings[intermediate_bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
+                all_bitstrings[intermediate_bitstring]['probability'] += probability  # Aggregate probabilities
+                energy = calculate_bitstring_energy(intermediate_bitstring, q_hamiltonian)
+                all_bitstrings[intermediate_bitstring]['energy'] = (all_bitstrings[intermediate_bitstring]['energy'] * all_bitstrings[intermediate_bitstring]['count'] + energy) / (all_bitstrings[intermediate_bitstring]['count'] + 1)
+                all_bitstrings[intermediate_bitstring]['count'] += 1
 
-print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
+
+sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
+
+print("Best Measurement:", best_measurement)
 for bitstring, data in sorted_bitstrings:
     print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}")
 
@@ -297,14 +323,14 @@ found = False
 for bitstring, data in sorted_bitstrings:
     if bitstring == best_measurement['bitstring']:
         print('Best measurement bitstring respects Hammings conditions.\n')
-        print('Ground state energy: ', data['energy']+N*P+k)
+        print('Ground state energy: ', data['energy']+k)
         data = {
-            "Experiment": ["Aer Simulation local penalty QAOA"],
+            "Experiment": ["Aer Simulation Local Penalty QAOA"],
             "Ground State Energy": [np.real(result1.best_measurement['value'] + N*P + k)],
             "Best Measurement": [result1.best_measurement],
             "Execution Time (seconds)": [elapsed_time1],
             "Number of qubits": [num_qubits]
-}
+        }
         found = True
         break
 
@@ -312,7 +338,7 @@ if not found:
     print('Best measurement bitstring does not respect Hammings conditions, take the sorted bitstring corresponding to the smallest energy.\n')
     post_selected_bitstring, post_selected_energy = sorted_bitstrings[0]
     data = {
-        "Experiment": ["Aer Simulation local penalty QAOA, post-selected"],
+        "Experiment": ["Aer Simulation Local Penalty QAOA, post-selected"],
         "Ground State Energy": [post_selected_energy['energy'] + N*P + k],
         "Best Measurement": [post_selected_bitstring],
         "Execution Time (seconds)": [elapsed_time1],
@@ -321,7 +347,6 @@ if not found:
 
 df = pd.DataFrame(data)
 df.to_csv(file_path, index=False)
-
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit_algorithms import SamplingVQE
@@ -347,7 +372,7 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
+# linear_coupling_map = generate_linear_coupling_map(num_qubits)
 # coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15]])
@@ -356,12 +381,11 @@ linear_coupling_map = generate_linear_coupling_map(num_qubits)
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [25, 35], [26, 25], [26, 27], [27, 17], [27, 26]])
 coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [4, 16], [5, 6], [6, 7], [7, 8], [8, 9], [8, 17], [9, 10], [10, 11], [11, 12], [12, 13], [12, 18], [13, 14], [15, 19], [16, 23], [17, 27], [18, 31], [19, 20], [20, 21], [21, 22], [21, 34], [22, 23], [23, 24], [24, 25], [25, 26], [26, 27]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
 ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
-                       optimization_level= 3, layout_method='dense', routing_method='stochastic')
+                       optimization_level= 3, layout_method='dense', routing_method='basic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
@@ -372,15 +396,17 @@ ansatz_isa.decompose().draw('mpl')
 
 op_counts = ansatz_isa.count_ops()
 total_gates = sum(op_counts.values())
+CNOTs = op_counts['cz']
 depth = ansatz_isa.depth()
 print("Operation counts:", op_counts)
 print("Total number of gates:", total_gates)
 print("Depth of the circuit: ", depth)
 
 data_depth = {
-    "Experiment": ["Hardware local penalty QAOA"],
+    "Experiment": ["Hardware XY-QAOA"],
     "Total number of gates": [total_gates],
-    "Depth of the circuit": [depth]
+    "Depth of the circuit": [depth],
+    "CNOTs": [CNOTs]
 }
 
 df_depth = pd.DataFrame(data_depth)

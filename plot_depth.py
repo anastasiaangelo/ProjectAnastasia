@@ -5,9 +5,11 @@ import matplotlib.pyplot as plt
 
 # Define the paths
 folder_paths = {
-    "local": "RESULTS/Depths/localpenalty-QAOA",
-    "XY": "RESULTS/Depths/XY-QAOA",
-    "no_penalty": "RESULTS/nopenalty-QAOA"
+    "local": "RESULTS/Depths/localpenalty-QAOA-basic",
+    "XY": "RESULTS/Depths/XY-QAOA-basic",
+    "no_penalty": "RESULTS/nopenalty-QAOA",
+    "local_3rot": "RESULTS/Depths/3rot-localpenalty-QAOA-basic",
+    "XY_3rot": "RESULTS/Depths/3rot-XY-QAOA-basic"
 }
 
 def custom_sort_key(filename):
@@ -23,10 +25,15 @@ def read_sorted_csv(folder):
 data_local = read_sorted_csv(folder_paths["local"])
 data_XY = read_sorted_csv(folder_paths["XY"])
 data_no_penalty = read_sorted_csv(folder_paths["no_penalty"])
+data_3rot_local = read_sorted_csv(folder_paths["local_3rot"])
+data_3rot_XY = read_sorted_csv(folder_paths["XY_3rot"])
 
 # Store ratios and num_qubits
 depths = []
 num_qubits_list = []
+
+depths_3 = []
+num_qubits_3 = []
 
 # Calculate the ratios
 for df_local, df_XY, df_no_penalty in zip(data_local, data_XY, data_no_penalty):
@@ -37,21 +44,34 @@ for df_local, df_XY, df_no_penalty in zip(data_local, data_XY, data_no_penalty):
     depths.append((depth_local, depth_XY))
     num_qubits_list.append(num_qubits)
 
-num_qubits_list = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28]
+for df_local_3rot, df_XY_3rot in zip(data_3rot_local, data_3rot_XY):
+    depth_local_3rot = df_local_3rot['Depth of the circuit']
+    depth_XY_3rot = df_XY_3rot['Depth of the circuit']
+    
+    depths_3.append((depth_local_3rot, depth_XY_3rot))
+
+num_qubits_list = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26]
+num_qubits_3 = [12, 15, 18, 21, 24, 27, 30]
 print(num_qubits_list)
+print(num_qubits_3)
 print(depths)
 
 # Plotting the ratios
 fig, ax = plt.subplots()
 x = num_qubits_list
+x3 = num_qubits_3
 y_local = [r[0] for r in depths]
 y_XY = [r[1] for r in depths]
+y_local_3rot = [r[0] for r in depths_3]
+y_XY_3rot = [r[1] for r in depths_3]
 
-ax.plot(x, y_local, label="local penalties", marker='o')
-ax.plot(x, y_XY, label="XY mixer", marker='x')
+ax.plot(x, y_local, label="local penalties 2rot", marker='o')
+ax.plot(x, y_XY, label="XY mixer 2rot", marker='x')
+ax.plot(x3, y_local_3rot, label="local penalties 3rot", marker='^')
+ax.plot(x3, y_XY_3rot, label="XY mixer 3 rot", marker='1')
 
 ax.set_xlabel("Number of Qubits")
-ax.set_ylabel("Depth of Circuit")
-ax.set_title("Circuit Depth by Number of Qubits")
+ax.set_ylabel("Number of CNOTs")
+ax.set_title("Number of CNOTs by Number of Qubits Basic Routing")
 ax.legend()
 plt.show()

@@ -1,6 +1,7 @@
-# Point 4 of constraint studies for paper, Ising model with XY mixer to implement Hamming's condition
+# Point 4 of constraint studies for paper, Ising model with XY mixer to implement Hamming's condition, 2 rotamers per residue
 
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
+# Change file paths, run cells for simulations/hardware
 # %%
 import numpy as np
 import pandas as pd

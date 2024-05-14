@@ -1,4 +1,6 @@
 ### Take input pdb, score, repack and extract one and two body energies
+# Script for generating the test sturcture with its rotamers 
+# lines 23 and 87 to vary
 import pyrosetta
 pyrosetta.init()
 
@@ -18,8 +20,8 @@ from pyrosetta.rosetta.core.pack.interaction_graph import InteractionGraphFactor
 from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
-# Initiate structure, scorefunction
-pose = pyrosetta.pose_from_pdb("input_files/11residue.pdb")
+# Initiate structure, scorefunction, change PDB files
+pose = pyrosetta.pose_from_pdb("input_files/5residue.pdb")
 
 
 residue_count = pose.total_residue()
@@ -83,8 +85,8 @@ df1 = pd.DataFrame(columns=['res i', 'rot A_i', 'E_ii'])
 # pmm.keep_history(True)
 # pmm.apply(clone_pose)
 
-# to limit to 2 rotamers per residue
-num_rot = 2
+# to limit to n rotamers per residue, change based on how many rotamers desired
+num_rot = 3
 
 # Loop to find Hamiltonian values Jij - interaction of rotamers on NN residues
 for residue_number in range(1, residue_count):

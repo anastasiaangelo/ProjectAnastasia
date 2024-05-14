@@ -1,6 +1,7 @@
-# Point 2 of constraint studies for paper, Ising model with local penalties
+# Point 2 of constraint studies for paper, Ising model with local penalties, 3 rotamers per residue
 
 # Script to optimise the Hamiltonian, starting directly from the Ising Hamiltonian
+# Change file paths, run cells for simulations/hardware
 # %%
 import numpy as np
 import pandas as pd
@@ -8,8 +9,8 @@ import time
 from copy import deepcopy
 
 num_rot = 3
-file_path = "RESULTS/3rot-localpenalty-QAOA/8res-3rot.csv"
-file_path_depth = "RESULTS/Depths/3rot-localpenalty-QAOA/10res-3rot-basic.csv"
+file_path = "RESULTS/3rot-localpenalty-QAOA/4res-3rot.csv"
+file_path_depth = "RESULTS/Depths/3rot-localpenalty-QAOA-noopt/10res-3rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -170,9 +171,9 @@ options= {
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
-    "shots": 1000,
+    "shots": 5000,
     "optimization_level": 3,
-    "resilience_level": 0
+    "resilience_level": 3
 }
 
 def callback(quasi_dists, parameters, energy):
@@ -326,7 +327,7 @@ def generate_linear_coupling_map(num_qubits):
     
     return CouplingMap(couplinglist=coupling_list)
 
-# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+linear_coupling_map = generate_linear_coupling_map(num_qubits)
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20]])
 # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
@@ -336,7 +337,7 @@ qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
 ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
-                       optimization_level= 3, layout_method='dense', routing_method='basic')
+                       optimization_level=0, layout_method='dense', routing_method='basic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
 hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)

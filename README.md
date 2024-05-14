@@ -2,6 +2,8 @@
 
 **Repository for Protien Folding project**
 
+Create a virtual environment with the packages in requirements.txt, in the location: /venv/lib/python3.10/site-packages/qiskit_algorithms/minimum_eigensolvers/sampling_vqe.py substitute the sampling_vqe.py file found in this github in order to obtain the intermediate bitstrings and energy values of the whole QAOA process.
+
 **1. Ising_Hamiltonian.py**
 on line 13 of the code a PDB input file from the folder 'input_files' can be chosen and run in the script, the packing and relaxation is performed based on the number of           rotamers specified on line 89 of the code (num_rot = 2,3,etc.) and two output CSV files are generated: one_body_terms.csv and two_body_terms.csv in the folder 'energy_files'
 

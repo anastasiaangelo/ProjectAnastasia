@@ -5,9 +5,6 @@
 *.cif
 *.mol
 *.params
-QiskitDevenv/
-venv1/
-myenv/
 venv/
 RESULTS/
 PyRosetta4.Release.python310.mac.release-358

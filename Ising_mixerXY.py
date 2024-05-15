@@ -6,6 +6,7 @@
 import numpy as np
 import pandas as pd
 import time
+import os
 from copy import deepcopy
 
 num_rot = 2
@@ -222,9 +223,9 @@ options= {
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
-    "shots": 1000,
+    "shots": 5000,
     "optimization_level": 3,
-    "resilience_level": 0
+    "resilience_level": 3
 }
 
 def callback(quasi_dists, parameters, energy):
@@ -350,7 +351,13 @@ if not found:
     }
 
 df = pd.DataFrame(data)
-df.to_csv(file_path, index=False)
+
+if not os.path.isfile(file_path):
+    # File does not exist, write with header
+    df.to_csv(file_path, index=False)
+else:
+    # File exists, append without writing the header
+    df.to_csv(file_path, mode='a', index=False, header=False)
 
 # %%
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")

@@ -186,7 +186,7 @@ noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_ma
 intermediate_data = []
 
 start_time1 = time.time()
-qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point, callback=callback)
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
 elapsed_time1 = end_time1 - start_time1
@@ -308,131 +308,131 @@ else:
 
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
-from qiskit.circuit.library import QAOAAnsatz
-from qiskit_algorithms import SamplingVQE
-from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
-from qiskit import transpile, QuantumCircuit, QuantumRegister
-from qiskit.transpiler import CouplingMap, Layout
+# from qiskit.circuit.library import QAOAAnsatz
+# from qiskit_algorithms import SamplingVQE
+# from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
+# from qiskit import transpile, QuantumCircuit, QuantumRegister
+# from qiskit.transpiler import CouplingMap, Layout
 
-service = QiskitRuntimeService()
-backend = service.backend("ibm_torino")
-print('Coupling Map of hardware: ', backend.configuration().coupling_map)
+# service = QiskitRuntimeService()
+# backend = service.backend("ibm_torino")
+# print('Coupling Map of hardware: ', backend.configuration().coupling_map)
 
-ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
-print('\n\nQAOAAnsatz: ', ansatz)
+# ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
+# print('\n\nQAOAAnsatz: ', ansatz)
 
-target = backend.target
-ansatz.count_ops
-# %%
-# real_coupling_map = backend.configuration().coupling_map
-# coupling_map = CouplingMap(couplinglist=real_coupling_map)
+# target = backend.target
+# ansatz.count_ops
+# # %%
+# # real_coupling_map = backend.configuration().coupling_map
+# # coupling_map = CouplingMap(couplinglist=real_coupling_map)
 
-def generate_linear_coupling_map(num_qubits):
+# def generate_linear_coupling_map(num_qubits):
 
-    coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
+#     coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
     
-    return CouplingMap(couplinglist=coupling_list)
+#     return CouplingMap(couplinglist=coupling_list)
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25]])
-coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
-qr = QuantumRegister(num_qubits, 'q')
-circuit = QuantumCircuit(qr)
-trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
-                       optimization_level=0, layout_method='dense', routing_method='basic')
-print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
+# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25]])
+# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
+# qr = QuantumRegister(num_qubits, 'q')
+# circuit = QuantumCircuit(qr)
+# trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
+# ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=coupling_map,
+#                        optimization_level=0, layout_method='dense', routing_method='basic')
+# print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
-hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
+# hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
+# print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
-# %%
-ansatz_isa.decompose().draw('mpl')
+# # %%
+# ansatz_isa.decompose().draw('mpl')
 
-op_counts = ansatz_isa.count_ops()
-total_gates = sum(op_counts.values())
-CNOTs = op_counts['cz']
-depth = ansatz_isa.depth()
-print("Operation counts:", op_counts)
-print("Total number of gates:", total_gates)
-print("Depth of the circuit: ", depth)
+# op_counts = ansatz_isa.count_ops()
+# total_gates = sum(op_counts.values())
+# CNOTs = op_counts['cz']
+# depth = ansatz_isa.depth()
+# print("Operation counts:", op_counts)
+# print("Total number of gates:", total_gates)
+# print("Depth of the circuit: ", depth)
 
-data_depth = {
-    "Experiment": ["Hardware XY-QAOA"],
-    "Total number of gates": [total_gates],
-    "Depth of the circuit": [depth],
-    "CNOTs": [CNOTs]
-}
+# data_depth = {
+#     "Experiment": ["Hardware XY-QAOA"],
+#     "Total number of gates": [total_gates],
+#     "Depth of the circuit": [depth],
+#     "CNOTs": [CNOTs]
+# }
 
-df_depth = pd.DataFrame(data_depth)
-df_depth.to_csv(file_path_depth, index=False)
+# df_depth = pd.DataFrame(data_depth)
+# df_depth.to_csv(file_path_depth, index=False)
 
 
-# %%
-session = Session(backend=backend)
-print('\nhere 1')
-sampler = Sampler(backend=backend, session=session)
-print('here 2')
-qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
-print('here 3')
-result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
+# # %%
+# session = Session(backend=backend)
+# print('\nhere 1')
+# sampler = Sampler(backend=backend, session=session)
+# print('here 2')
+# qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
+# print('here 3')
+# result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
 
-print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
-print('best measurement', result2.best_measurement)
-print('Optimal parameters: ', result2.optimal_parameters)
-print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']) + N*P + k)
+# print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
+# print('best measurement', result2.best_measurement)
+# print('Optimal parameters: ', result2.optimal_parameters)
+# print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']) + N*P + k)
 
-# %%
-jobs = service.jobs(session_id='crsn8xvx484g008f4200')
+# # %%
+# jobs = service.jobs(session_id='crsn8xvx484g008f4200')
 
-for job in jobs:
-    if job.status().name == 'DONE':
-        results = job.result()
-        print("Job completed successfully")
-else:
-    print("Job status:", job.status())
+# for job in jobs:
+#     if job.status().name == 'DONE':
+#         results = job.result()
+#         print("Job completed successfully")
+# else:
+#     print("Job status:", job.status())
 
-# %%
-total_usage_time = 0
-for job in jobs:
-    job_result = job.usage_estimation['quantum_seconds']
-    total_usage_time += job_result
+# # %%
+# total_usage_time = 0
+# for job in jobs:
+#     job_result = job.usage_estimation['quantum_seconds']
+#     total_usage_time += job_result
 
-print(f"Total Usage Time Hardware: {total_usage_time} seconds")
-print('\n\n')
+# print(f"Total Usage Time Hardware: {total_usage_time} seconds")
+# print('\n\n')
 
-with open(file_path, "a") as file:
-    file.write("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
-    file.write(f"'best measurement' {result2.best_measurement}")
-    file.write(f"Optimal parameters: {result2.optimal_parameters}")
-    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value']) + N*P + k}")
-    file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
-    file.write(f"Total number of gates: {total_gates}\n")   
-    file.write(f"Depth of circuit: {depth}\n")
+# with open(file_path, "a") as file:
+#     file.write("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
+#     file.write(f"'best measurement' {result2.best_measurement}")
+#     file.write(f"Optimal parameters: {result2.optimal_parameters}")
+#     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value']) + N*P + k}")
+#     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
+#     file.write(f"Total number of gates: {total_gates}\n")   
+#     file.write(f"Depth of circuit: {depth}\n")
 
-# %%
-index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
+# # %%
+# index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
 
-measured_bitstring = result2.best_measurement['bitstring']
-original_bitstring = ['']*num_qubits
+# measured_bitstring = result2.best_measurement['bitstring']
+# original_bitstring = ['']*num_qubits
 
-for i, logical in enumerate(index):
-        original_bitstring[i] = measured_bitstring[logical]
+# for i, logical in enumerate(index):
+#         original_bitstring[i] = measured_bitstring[logical]
 
-original_bitstring = ''.join(original_bitstring)
-print("Original bitstring:", original_bitstring)
+# original_bitstring = ''.join(original_bitstring)
+# print("Original bitstring:", original_bitstring)
 
-data = {
-    "Experiment": ["Quantum Optimisation (QAOA)", "Noisy Quantum Optimisation (Aer Simulator)", "Quantum Optimisation (QAOAAnsatz)"],
-    "Ground State Energy": [result.optimal_value + k, np.real(result1.best_measurement['value'] + k), np.real(result2.best_measurement['value'])],
-    "Best Measurement": [result.optimal_parameters, result1.best_measurement, result2.best_measurement],
-    "Optimal Parameters": ["N/A", "N/A", result2.optimal_parameters],
-    "Execution Time (seconds)": [elapsed_time, elapsed_time1, total_usage_time],
-    "Total Gates": ["N/A", total_gates, total_gates],
-    "Circuit Depth": ["N/A", depth, depth]
-}
+# data = {
+#     "Experiment": ["Quantum Optimisation (QAOA)", "Noisy Quantum Optimisation (Aer Simulator)", "Quantum Optimisation (QAOAAnsatz)"],
+#     "Ground State Energy": [result.optimal_value + k, np.real(result1.best_measurement['value'] + k), np.real(result2.best_measurement['value'])],
+#     "Best Measurement": [result.optimal_parameters, result1.best_measurement, result2.best_measurement],
+#     "Optimal Parameters": ["N/A", "N/A", result2.optimal_parameters],
+#     "Execution Time (seconds)": [elapsed_time, elapsed_time1, total_usage_time],
+#     "Total Gates": ["N/A", total_gates, total_gates],
+#     "Circuit Depth": ["N/A", depth, depth]
+# }
 
-df.to_csv(file_path, index=False)
+# df.to_csv(file_path, index=False)

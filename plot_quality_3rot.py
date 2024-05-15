@@ -18,7 +18,16 @@ def custom_sort_key(filename):
 # Function to safely read CSV files with custom sorting
 def read_sorted_csv(folder):
     files = sorted(os.listdir(folder), key=custom_sort_key)  # Sort with the custom key
-    return [pd.read_csv(os.path.join(folder, f)) for f in files if f.endswith(".csv")]
+    data_frames = []
+    for f in files:
+        if f.endswith(".csv"):
+            try:
+                df = pd.read_csv(os.path.join(folder, f), on_bad_lines='skip')
+                data_frames.append(df)
+            except pd.errors.ParserError as e:
+                print(f"Error reading {f}: {e}")
+    return data_frames
+
 
 # Read data
 data_local = read_sorted_csv(folder_paths["local"])
@@ -33,7 +42,8 @@ num_qubits_list = []
 # Calculate the ratios
 for df_local, df_XY, df_no_penalty in zip(data_local, data_XY, data_no_penalty): #, data_hardware):
     num_qubits = df_no_penalty['Number of qubits']  # From no_penalty file
-    energy_local = df_local['Ground State Energy']
+    # energy_local = df_local['Ground State Energy'].mean()
+    energy_local = df_local['Ground State Energy'].iloc[0]
     energy_XY = df_XY['Ground State Energy']
     energy_classical = df_no_penalty['Ground State Energy']
     # energy_hardware = df_hardware['Ground State Energy']

@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 import time
 from copy import deepcopy
+import os
 
 num_rot = 3
-file_path = "RESULTS/3rot-localpenalty-QAOA/4res-3rot.csv"
+file_path = "RESULTS/3rot-localpenalty-QAOA/7res-3rot.csv"
 file_path_depth = "RESULTS/Depths/3rot-localpenalty-QAOA-noopt/10res-3rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -171,7 +172,7 @@ options= {
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
-    "shots": 5000,
+    "shots": 10000,
     "optimization_level": 3,
     "resilience_level": 3
 }
@@ -281,7 +282,8 @@ for bitstring, data in sorted_bitstrings:
             "Ground State Energy": [np.real(result1.best_measurement['value'] + N*P + k)],
             "Best Measurement": [result1.best_measurement],
             "Execution Time (seconds)": [elapsed_time1],
-            "Number of qubits": [num_qubits]
+            "Number of qubits": [num_qubits],
+            "shots": [options['shots']]
         }
         found = True
         break
@@ -294,11 +296,18 @@ if not found:
         "Ground State Energy": [post_selected_energy['energy'] + N*P + k],
         "Best Measurement": [post_selected_bitstring],
         "Execution Time (seconds)": [elapsed_time1],
-        "Number of qubits": [num_qubits]
+        "Number of qubits": [num_qubits],
+        "shots": [options['shots']]
     }
 
 df = pd.DataFrame(data)
-df.to_csv(file_path, index=False)
+
+if not os.path.isfile(file_path):
+    # File does not exist, write with header
+    df.to_csv(file_path, index=False)
+else:
+    # File exists, append without writing the header
+    df.to_csv(file_path, mode='a', index=False, header=False)
 
 
 # %% ############################################# Hardware with QAOAAnastz ##################################################################

@@ -10,7 +10,7 @@ from copy import deepcopy
 import os
 
 num_rot = 3
-file_path = "RESULTS/3rot-localpenalty-QAOA/7res-3rot.csv"
+file_path = "RESULTS/3rot-localpenalty-QAOA/9res-3rot.csv"
 file_path_depth = "RESULTS/Depths/3rot-localpenalty-QAOA-noopt/10res-3rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -28,9 +28,7 @@ Q = np.zeros((num,num))
 n = 0
 
 for j in range(0, num-3, num_rot):
-    print('j:', j)
     for i in range(j, j+num_rot):
-        print('i: ', i)
         Q[i][j+3] = deepcopy(value[n])
         Q[j+3][i] = deepcopy(value[n])
         Q[i][j+4] = deepcopy(value[n+1])
@@ -57,7 +55,7 @@ print('\nH: \n', H)
 def add_penalty_term(M, penalty_constant, residue_pairs):
     for i, j in residue_pairs:
         M[i][j] += penalty_constant
-        M[j][i] += penalty_constant  # Symmetrically update the matrix
+        M[j][i] += penalty_constant 
     return M
 
 def generate_pairs(N):
@@ -67,7 +65,6 @@ def generate_pairs(N):
         pairs.append((i, i+2))   # Pair (x1, x3)
         pairs.append((i+1, i+2)) # Pair (x2, x3)
     return pairs
-
 
 P = 6
 pairs = generate_pairs(N)
@@ -172,7 +169,7 @@ options= {
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
-    "shots": 10000,
+    "shots": 5000,
     "optimization_level": 3,
     "resilience_level": 3
 }

@@ -1,0 +1,12 @@
+
+
+Local Quantum optimisation results.
+'best measurement' {'state': 2, 'bitstring': '0010', 'value': (5.398962557315826+0j), 'probability': 0.245648019278185}
+The ground state energy with QAOA is: ' 5.398962557315826
+
+
+The result of the noisy quantum optimisation using QAOAAnsatz is: 
+
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '0000', 'value': (0.5518708825111389+0j), 'probability': 0.277}Optimal parameters: {ParameterVectorElement(β[0]): 2.522125724616886, ParameterVectorElement(γ[0]): 2.3580659040499783}'The ground state energy with noisy QAOA is: ' 0.5518708825111389Aer Simulator run time: 88.45530319213867 seconds

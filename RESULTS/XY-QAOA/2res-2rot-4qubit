@@ -1,0 +1,21 @@
+H : [[-0.73143458  0.          0.18098192  0.18924715]
+ [ 0.         -0.58407453  0.02273159  0.03049557]
+ [ 0.18098192  0.02273159 -0.98794273  0.        ]
+ [ 0.18924715  0.03049557  0.         -0.90660441]] 
+
+
+Classical optimisation results.
+Ground energy eigsh: -2.786600023508071
+Ground state wavefunction eigsh: [-1.00000000e+00 -1.94289029e-16 -2.22044605e-16 -2.77555756e-17
+ -8.32667268e-17 -2.42861287e-17 -5.55111512e-17 -1.59594560e-16
+ -9.99200722e-16 -5.55111512e-17  5.55111512e-17  5.55111512e-17
+ -1.31838984e-16  0.00000000e+00  1.66533454e-16  1.94289029e-16]
+
+
+The result of the quantum optimisation using QAOA is: 
+'best measurement' {'state': 5, 'bitstring': '0101', 'value': (-0.22919961810111988+0j), 'probability': 1.0}
+Local Simulation run time: 0.27255773544311523 seconds
+
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '0000', 'value': (-2.786600023508072+0j), 'probability': 0.054}Optimal parameters: {ParameterVectorElement(β[0]): 0.7802337230842288, ParameterVectorElement(γ[0]): 2.1013189996339348}'The ground state energy with noisy QAOA is: ' -2.786600023508072Aer Simulator run time: 63.1972291469574 seconds

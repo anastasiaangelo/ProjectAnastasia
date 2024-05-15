@@ -1,0 +1,73 @@
+H : [[-0.73143458  0.          0.18098192  0.18924715  0.          0.        ]
+ [ 0.         -0.77788773  0.22430877  0.02273159  0.          0.        ]
+ [ 0.18098192  0.22430877 -0.98522799  0.          0.03049557  0.06550846]
+ [ 0.18924715  0.02273159  0.         -1.26303509  0.12967131  0.13715583]
+ [ 0.          0.          0.03049557  0.12967131 -0.84702857  0.        ]
+ [ 0.          0.          0.06550846  0.13715583  0.         -1.06315371]] 
+
+
+Classical optimisation results.
+Ground energy eigsh: -4.687667086720468
+Ground state wavefunction eigsh: [ 1.00000000e+00 -5.88379444e-19  9.73326522e-16  1.56863385e-16
+ -9.19907778e-17  2.04919008e-17 -1.23129407e-16 -6.57075901e-18
+ -5.37800855e-16  6.23629843e-17 -2.23722616e-16 -1.27769870e-17
+  2.05159980e-16 -2.59550675e-17  2.60342672e-19  2.91787761e-18
+  7.77931077e-16  1.74003090e-17 -8.18413028e-18  4.69720382e-18
+  2.03510721e-16  9.59823556e-18 -1.52750211e-18  1.21009464e-17
+  1.77143403e-16  5.16771071e-18  2.43266620e-18  2.61036820e-19
+ -8.09138510e-18  1.08766579e-17 -5.62519770e-18  1.02774722e-17
+  2.09932118e-15 -9.44803102e-17  4.76731162e-16 -9.18196306e-18
+  5.34589780e-19 -3.11629429e-18  2.14900836e-17 -1.62792585e-17
+ -8.97596225e-17  7.74515518e-18 -2.28516194e-17  4.83727804e-18
+  1.98330882e-17  3.39566269e-17  6.97255666e-18 -7.31136420e-18
+  2.77681081e-16  1.85551619e-17 -9.81227440e-17  7.80854578e-18
+  2.24859377e-18 -4.37293659e-18 -1.70832416e-17 -1.03286426e-17
+ -1.18628450e-17  1.50559168e-17  6.67478210e-18  2.15932041e-17
+  5.59713264e-18  9.95196886e-18 -2.20767553e-17 -7.91989464e-17]
+
+
+The result of the quantum optimisation using QAOA is: 
+'best measurement' {'state': 34, 'bitstring': '100010', 'value': (-2.591532662510872+0j), 'probability': 0.1071449308061882}
+Local Simulation run time: 0.7328832149505615 seconds
+
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 78.55334997177124 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 79.44278073310852 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 84.89228081703186 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 79.74282789230347 seconds
+
+The result of the quantum optimisation using QAOA is: 
+'best measurement' {'state': 34, 'bitstring': '100010', 'value': (-2.591532662510872+0j), 'probability': 0.1071449308061882}
+Local Simulation run time: 0.7352910041809082 seconds
+
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.002}Optimal parameters: {ParameterVectorElement(β[0]): 0.6236782347213546, ParameterVectorElement(γ[0]): 1.0026902863936311}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 37.606990814208984 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 89.03990197181702 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 89.39477205276489 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 89.75168824195862 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 34, 'bitstring': '100010', 'value': (-2.591532662510872+0j), 'probability': 0.1071449308061882}Optimal parameters: {ParameterVectorElement(β[0]): 0.7744618393552373, ParameterVectorElement(γ[0]): 0.9998254718166077}'The ground state energy with noisy QAOA is: ' -2.591532662510872Aer Simulator run time: 0.4426860809326172 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 34, 'bitstring': '100010', 'value': (-2.591532662510872+0j), 'probability': 0.114}Optimal parameters: {ParameterVectorElement(β[0]): 0.84375, ParameterVectorElement(γ[0]): 1.0}'The ground state energy with noisy QAOA is: ' -2.591532662510872Aer Simulator run time: 0.23008489608764648 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 0, 'bitstring': '000000', 'value': (-4.687667086720467+0j), 'probability': 0.001}Optimal parameters: {ParameterVectorElement(β[0]): 0.8554717490434472, ParameterVectorElement(γ[0]): 0.9998469606826007}'The ground state energy with noisy QAOA is: ' -4.687667086720467Aer Simulator run time: 85.32255220413208 seconds
+
+The result of the noisy quantum optimisation using QAOA is: 
+'best measurement' {'state': 34, 'bitstring': '100010', 'value': (-2.591532662510872+0j), 'probability': 0.114}Optimal parameters: {ParameterVectorElement(β[0]): 0.84375, ParameterVectorElement(γ[0]): 1.0}'The ground state energy with noisy QAOA is: ' -2.591532662510872Aer Simulator run time: 0.20757293701171875 seconds

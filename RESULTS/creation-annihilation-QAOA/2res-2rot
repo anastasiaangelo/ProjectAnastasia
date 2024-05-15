@@ -1,0 +1,5 @@
+
+
+Local Quantum optimisation results.
+'best measurement' {'state': 3, 'bitstring': '11', 'value': (2.435418128967285+0j), 'probability': 0.914778574672733}
+The ground state energy with QAOA is: ' 2.435418128967285

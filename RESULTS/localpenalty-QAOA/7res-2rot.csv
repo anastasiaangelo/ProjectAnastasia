@@ -1,0 +1,2 @@
+Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits
+Aer Simulation local penalty QAOA,18.961961939930916,"{'state': 5481, 'bitstring': '01010101101001', 'value': (-47.37333168834448+0j), 'probability': 0.001}",75.29476189613342,14

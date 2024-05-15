@@ -7,3 +7,4 @@ venv/
 lib/
 PyRosetta4.Release.python310.mac.release-358
 student-notebooks
+qiskit-terra

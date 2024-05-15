@@ -6,10 +6,11 @@
 import numpy as np
 import pandas as pd
 import time
+import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/10res-2rot.csv"
+file_path = "RESULTS/localpenalty-QAOA/6res-2rot.csv"
 file_path_depth = "RESULTS/Depths/localpenalty-QAOA-noopt/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -237,7 +238,7 @@ intermediate_data = []
 noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
 
 start_time1 = time.time()
-qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point, callback=callback)
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
 elapsed_time1 = end_time1 - start_time1
@@ -347,7 +348,14 @@ if not found:
     }
 
 df = pd.DataFrame(data)
-df.to_csv(file_path, index=False)
+
+if not os.path.isfile(file_path):
+    # File does not exist, write with header
+    df.to_csv(file_path, index=False)
+else:
+    # File exists, append without writing the header
+    df.to_csv(file_path, mode='a', index=False, header=False)
+    
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit_algorithms import SamplingVQE

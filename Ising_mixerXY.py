@@ -219,7 +219,7 @@ device_backend = provider.get_backend('ibm_torino')
 noise_model = NoiseModel.from_backend(device_backend)
 
 options= {
-    # "noise_model": noise_model,
+    "noise_model": noise_model,
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
@@ -241,7 +241,7 @@ initial_point = np.ones(2 * p)
 noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
 
 start_time1 = time.time()
-qaoa1 = QAOA(sampler=noisy_sampler, optimizer=SPSA(), reps=p, initial_state=qc, mixer=XY_mixer, initial_point=initial_point)
+qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, initial_state=qc, mixer=XY_mixer, initial_point=initial_point,callback=callback)
 result1 = qaoa1.compute_minimum_eigenvalue(q_hamiltonian)
 end_time1 = time.time()
 elapsed_time1 = end_time1 - start_time1
@@ -288,41 +288,52 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
 
     return resultt.values[0].real
 
-
 eigenstate_distribution = result1.eigenstate
 best_measurement = result1.best_measurement
 final_bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
 
 all_bitstrings = {}
-for state, prob in final_bitstrings.items():
-    bitstring = int_to_bitstring(state, num_qubits)
-    if check_hamming(bitstring, num_rot):
-        if bitstring not in all_bitstrings:
-            all_bitstrings[bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
-        all_bitstrings[bitstring]['probability'] += prob  # Aggregate probabilities
-        energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
-        all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
-        all_bitstrings[bitstring]['count'] += 1
+max_intermediate_index = -1
 
-for data in intermediate_data:
-    print(f"Quasi Distribution: {data['quasi_distributions']}, Parameters: {data['parameters']}, Energy: {data['energy']}")
+for index, data in enumerate(intermediate_data):
+    print(f"Quasi Distribution: {data['quasi_distributions']}, Parameters: {data['parameters']}, Energy: {data['energy']}, Index: {index}")
     for distribution in data['quasi_distributions']:
         for int_bitstring, probability in distribution.items():
             intermediate_bitstring = int_to_bitstring(int_bitstring, num_qubits)
             if check_hamming(intermediate_bitstring, num_rot):
                 if intermediate_bitstring not in all_bitstrings:
-                    all_bitstrings[intermediate_bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
+                    all_bitstrings[intermediate_bitstring] = {'probability': 0, 'energy': 0, 'count': 0, 'index': index}
                 all_bitstrings[intermediate_bitstring]['probability'] += probability  # Aggregate probabilities
                 energy = calculate_bitstring_energy(intermediate_bitstring, q_hamiltonian)
                 all_bitstrings[intermediate_bitstring]['energy'] = (all_bitstrings[intermediate_bitstring]['energy'] * all_bitstrings[intermediate_bitstring]['count'] + energy) / (all_bitstrings[intermediate_bitstring]['count'] + 1)
                 all_bitstrings[intermediate_bitstring]['count'] += 1
+                if all_bitstrings[intermediate_bitstring]['count'] == 1:
+                    all_bitstrings[intermediate_bitstring]['index'] = index
+                if index > max_intermediate_index:
+                    max_intermediate_index = index 
 
+for state, prob in final_bitstrings.items():
+    bitstring = int_to_bitstring(state, num_qubits)
+    if check_hamming(bitstring, num_rot):
+        if bitstring not in all_bitstrings:
+            all_bitstrings[bitstring] = {'probability': 0, 'energy': 0, 'count': 0, 'index': max_intermediate_index+1}
+        all_bitstrings[bitstring]['probability'] += prob  # Aggregate probabilities
+        energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
+        all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
+        all_bitstrings[bitstring]['count'] += 1
+
+total_bitstrings = len(final_bitstrings) + sum(len(data['quasi_distributions'][0]) for data in intermediate_data)
+hamming_satisfying_bitstrings = len(all_bitstrings)
+fraction_satisfying_hamming = hamming_satisfying_bitstrings / total_bitstrings
+print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")
 
 sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
+ground_state_repetition = sorted_bitstrings[0][1]['index']
 
 print("Best Measurement:", best_measurement)
+print("Sorted Bitstrings: ")
 for bitstring, data in sorted_bitstrings:
-    print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}")
+    print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}, Count: {data['count']}, Index: {data['index']}")
 
 found = False
 for bitstring, data in sorted_bitstrings:
@@ -334,8 +345,11 @@ for bitstring, data in sorted_bitstrings:
             "Ground State Energy": [np.real(result1.best_measurement['value'] + k)],
             "Best Measurement": [result1.best_measurement],
             "Execution Time (seconds)": [elapsed_time1],
-            "Number of qubits": [num_qubits]
-}
+            "Number of qubits": [num_qubits],
+            "shots": [options['shots']],
+            "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
+            "Iteration Ground State": [ground_state_repetition]
+        }
         found = True
         break
 
@@ -347,7 +361,10 @@ if not found:
         "Ground State Energy": [post_selected_energy['energy'] + k],
         "Best Measurement": [post_selected_bitstring],
         "Execution Time (seconds)": [elapsed_time1],
-        "Number of qubits": [num_qubits]
+        "Number of qubits": [num_qubits],
+        "shots": [options['shots']],
+        "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
+        "Iteration Ground State": [ground_state_repetition]
     }
 
 df = pd.DataFrame(data)

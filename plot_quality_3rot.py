@@ -41,11 +41,11 @@ num_qubits_list = []
 
 # Calculate the ratios
 for df_local, df_XY, df_no_penalty in zip(data_local, data_XY, data_no_penalty): #, data_hardware):
-    num_qubits = df_no_penalty['Number of qubits']  # From no_penalty file
-    # energy_local = df_local['Ground State Energy'].mean()
-    energy_local = df_local['Ground State Energy'].iloc[0]
-    energy_XY = df_XY['Ground State Energy']
-    energy_classical = df_no_penalty['Ground State Energy']
+    num_qubits = df_no_penalty['Number of qubits'].values[0]  # From no_penalty file
+    energy_local = df_local['Ground State Energy'].values[0]
+    # energy_local = df_local['Ground State Energy'].iloc[0]
+    energy_XY = df_XY['Ground State Energy'].values[0]
+    energy_classical = df_no_penalty['Ground State Energy'].values[0]
     # energy_hardware = df_hardware['Ground State Energy']
 
     ratio_XY_classical = energy_XY / energy_classical

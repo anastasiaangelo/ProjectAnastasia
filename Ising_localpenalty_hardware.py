@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/6res-2rot.csv"
+file_path = "RESULTS/localpenalty-QAOA/4res-2rot.csv"
 file_path_depth = "RESULTS/Depths/localpenalty-QAOA-noopt/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -81,58 +81,58 @@ for i in range(num_qubits):
             k += 0.5 * 0.25 * Q[i][j]
 
 
-# %% ################################################ Classical optimisation ###########################################################
-from scipy.sparse.linalg import eigsh
+# # %% ################################################ Classical optimisation ###########################################################
+# from scipy.sparse.linalg import eigsh
 
-Z_matrix = np.array([[1, 0], [0, -1]])
-identity = np.eye(2)
+# Z_matrix = np.array([[1, 0], [0, -1]])
+# identity = np.eye(2)
 
-def construct_operator(qubit_indices, num_qubits):
-    operator = np.eye(1)
-    for qubit in range(num_qubits):
-        if qubit in qubit_indices:
-            operator = np.kron(operator, Z_matrix)
-        else:
-            operator = np.kron(operator, identity)
-    return operator
+# def construct_operator(qubit_indices, num_qubits):
+#     operator = np.eye(1)
+#     for qubit in range(num_qubits):
+#         if qubit in qubit_indices:
+#             operator = np.kron(operator, Z_matrix)
+#         else:
+#             operator = np.kron(operator, identity)
+#     return operator
 
-C = np.zeros((2**num_qubits, 2**num_qubits))
+# C = np.zeros((2**num_qubits, 2**num_qubits))
 
-for i in range(num_qubits):
-    operator = construct_operator([i], num_qubits)
-    C += H[i][i] * operator
+# for i in range(num_qubits):
+#     operator = construct_operator([i], num_qubits)
+#     C += H[i][i] * operator
 
-for i in range(num_qubits):
-    for j in range(i+1, num_qubits):
-        operator = construct_operator([i, j], num_qubits)
-        C += H[i][j] * operator
+# for i in range(num_qubits):
+#     for j in range(i+1, num_qubits):
+#         operator = construct_operator([i, j], num_qubits)
+#         C += H[i][j] * operator
 
-print('C :\n', C)
+# print('C :\n', C)
 
-def create_hamiltonian(pairs, P, num_qubits):
-    H_pen = np.zeros((2**num_qubits, 2**num_qubits))
-    def tensor_term(term_indices):
-        term = [Z_matrix if i in term_indices else identity for i in range(num_qubits)]
-        result = term[0]
-        for t in term[1:]:
-            result = np.kron(result, t)
-        return result
+# def create_hamiltonian(pairs, P, num_qubits):
+#     H_pen = np.zeros((2**num_qubits, 2**num_qubits))
+#     def tensor_term(term_indices):
+#         term = [Z_matrix if i in term_indices else identity for i in range(num_qubits)]
+#         result = term[0]
+#         for t in term[1:]:
+#             result = np.kron(result, t)
+#         return result
     
-    for pair in pairs:
-        term = tensor_term(pair)
-        H_pen += P * term
+#     for pair in pairs:
+#         term = tensor_term(pair)
+#         H_pen += P * term
 
-    return H_pen
+#     return H_pen
 
-H_penalty = create_hamiltonian(pairs, P, num_qubits)
-H_tot = C + H_penalty
+# H_penalty = create_hamiltonian(pairs, P, num_qubits)
+# H_tot = C + H_penalty
 
-# Extract the ground state energy and wavefunction
-eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
-print("\n\nClassical optimisation results. \n")
-print("Ground energy eigsh: ", eigenvalues[0] + N*P + k)
-print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
-print('\n\n')
+# # Extract the ground state energy and wavefunction
+# eigenvalues, eigenvectors = eigsh(H_tot, k=num, which='SA')
+# print("\n\nClassical optimisation results. \n")
+# print("Ground energy eigsh: ", eigenvalues[0] + N*P + k)
+# print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
+# print('\n\n')
 
 # %% ############################################ Quantum optimisation ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
@@ -268,7 +268,7 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
     Returns:
         float: The calculated energy of the bitstring.
     """
-    # Prepare the quantum circuit for the bitstring
+
     num_qubits = len(bitstring)
     qc = QuantumCircuit(num_qubits)
     for i, char in enumerate(bitstring):
@@ -291,35 +291,47 @@ best_measurement = result1.best_measurement
 final_bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
 
 all_bitstrings = {}
-for state, prob in final_bitstrings.items():
-    bitstring = int_to_bitstring(state, num_qubits)
-    if check_hamming(bitstring, num_rot):
-        if bitstring not in all_bitstrings:
-            all_bitstrings[bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
-        all_bitstrings[bitstring]['probability'] += prob  # Aggregate probabilities
-        energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
-        all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
-        all_bitstrings[bitstring]['count'] += 1
+max_intermediate_index = -1
 
-for data in intermediate_data:
-    print(f"Quasi Distribution: {data['quasi_distributions']}, Parameters: {data['parameters']}, Energy: {data['energy']}")
+for index, data in enumerate(intermediate_data):
+    print(f"Quasi Distribution: {data['quasi_distributions']}, Parameters: {data['parameters']}, Energy: {data['energy']}, Index: {index}")
     for distribution in data['quasi_distributions']:
         for int_bitstring, probability in distribution.items():
             intermediate_bitstring = int_to_bitstring(int_bitstring, num_qubits)
             if check_hamming(intermediate_bitstring, num_rot):
                 if intermediate_bitstring not in all_bitstrings:
-                    all_bitstrings[intermediate_bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
+                    all_bitstrings[intermediate_bitstring] = {'probability': 0, 'energy': 0, 'count': 0, 'index': index}
                 all_bitstrings[intermediate_bitstring]['probability'] += probability  # Aggregate probabilities
                 energy = calculate_bitstring_energy(intermediate_bitstring, q_hamiltonian)
                 all_bitstrings[intermediate_bitstring]['energy'] = (all_bitstrings[intermediate_bitstring]['energy'] * all_bitstrings[intermediate_bitstring]['count'] + energy) / (all_bitstrings[intermediate_bitstring]['count'] + 1)
                 all_bitstrings[intermediate_bitstring]['count'] += 1
+                if all_bitstrings[intermediate_bitstring]['count'] == 1:
+                    all_bitstrings[intermediate_bitstring]['index'] = index
+                if index > max_intermediate_index:
+                    max_intermediate_index = index 
 
+for state, prob in final_bitstrings.items():
+    bitstring = int_to_bitstring(state, num_qubits)
+    if check_hamming(bitstring, num_rot):
+        if bitstring not in all_bitstrings:
+            all_bitstrings[bitstring] = {'probability': 0, 'energy': 0, 'count': 0, 'index': max_intermediate_index+1}
+        all_bitstrings[bitstring]['probability'] += prob  # Aggregate probabilities
+        energy = calculate_bitstring_energy(bitstring, q_hamiltonian)
+        all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
+        all_bitstrings[bitstring]['count'] += 1
+
+total_bitstrings = len(final_bitstrings) + sum(len(data['quasi_distributions'][0]) for data in intermediate_data)
+hamming_satisfying_bitstrings = len(all_bitstrings)
+fraction_satisfying_hamming = hamming_satisfying_bitstrings / total_bitstrings
+print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")
 
 sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
+ground_state_repetition = sorted_bitstrings[0][1]['index']
 
 print("Best Measurement:", best_measurement)
+print("Sorted Bitstrings:")
 for bitstring, data in sorted_bitstrings:
-    print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}")
+    print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}, Count: {data['count']}, Index: {data['index']}")
 
 found = False
 for bitstring, data in sorted_bitstrings:
@@ -331,7 +343,10 @@ for bitstring, data in sorted_bitstrings:
             "Ground State Energy": [np.real(result1.best_measurement['value'] + N*P + k)],
             "Best Measurement": [result1.best_measurement],
             "Execution Time (seconds)": [elapsed_time1],
-            "Number of qubits": [num_qubits]
+            "Number of qubits": [num_qubits],
+            "shots": [options['shots']],
+            "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
+            "Iteration Ground State": [ground_state_repetition]
         }
         found = True
         break
@@ -344,7 +359,10 @@ if not found:
         "Ground State Energy": [post_selected_energy['energy'] + N*P + k],
         "Best Measurement": [post_selected_bitstring],
         "Execution Time (seconds)": [elapsed_time1],
-        "Number of qubits": [num_qubits]
+        "Number of qubits": [num_qubits],
+        "shots": [options['shots']],
+        "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
+        "Iteration Ground State": [ground_state_repetition]
     }
 
 df = pd.DataFrame(data)
@@ -357,133 +375,133 @@ else:
     df.to_csv(file_path, mode='a', index=False, header=False)
     
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
-from qiskit.circuit.library import QAOAAnsatz
-from qiskit_algorithms import SamplingVQE
-from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
-from qiskit import transpile, QuantumCircuit, QuantumRegister
-from qiskit.transpiler import CouplingMap, Layout
+# from qiskit.circuit.library import QAOAAnsatz
+# from qiskit_algorithms import SamplingVQE
+# from qiskit_ibm_runtime import QiskitRuntimeService, Session, Sampler
+# from qiskit import transpile, QuantumCircuit, QuantumRegister
+# from qiskit.transpiler import CouplingMap, Layout
 
-service = QiskitRuntimeService()
-backend = service.backend("ibm_torino")
-print('Coupling Map of hardware: ', backend.configuration().coupling_map)
+# service = QiskitRuntimeService()
+# backend = service.backend("ibm_torino")
+# print('Coupling Map of hardware: ', backend.configuration().coupling_map)
 
-ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
-print('\n\nQAOAAnsatz: ', ansatz)
+# ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=mixer_op, reps=p)
+# print('\n\nQAOAAnsatz: ', ansatz)
 
-target = backend.target
-# %%
-# real_coupling_map = backend.configuration().coupling_map
-# coupling_map = CouplingMap(couplinglist=real_coupling_map)
+# target = backend.target
+# # %%
+# # real_coupling_map = backend.configuration().coupling_map
+# # coupling_map = CouplingMap(couplinglist=real_coupling_map)
 
-def generate_linear_coupling_map(num_qubits):
+# def generate_linear_coupling_map(num_qubits):
 
-    coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
+#     coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
     
-    return CouplingMap(couplinglist=coupling_list)
+#     return CouplingMap(couplinglist=coupling_list)
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
-# coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [25, 35], [26, 25], [26, 27], [27, 17], [27, 26]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
-qr = QuantumRegister(num_qubits, 'q')
-circuit = QuantumCircuit(qr)
-trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
-                       optimization_level= 0, layout_method='dense', routing_method='stochastic')
-print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
+# linear_coupling_map = generate_linear_coupling_map(num_qubits)
+# # coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [25, 35], [26, 25], [26, 27], [27, 17], [27, 26]])
+# # coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
+# qr = QuantumRegister(num_qubits, 'q')
+# circuit = QuantumCircuit(qr)
+# trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
+# ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
+#                        optimization_level= 0, layout_method='dense', routing_method='stochastic')
+# print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
-hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
+# hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
+# print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
-# %%
-ansatz_isa.decompose().draw('mpl')
+# # %%
+# ansatz_isa.decompose().draw('mpl')
 
-op_counts = ansatz_isa.count_ops()
-total_gates = sum(op_counts.values())
-CNOTs = op_counts['cz']
-depth = ansatz_isa.depth()
-print("Operation counts:", op_counts)
-print("Total number of gates:", total_gates)
-print("Depth of the circuit: ", depth)
+# op_counts = ansatz_isa.count_ops()
+# total_gates = sum(op_counts.values())
+# CNOTs = op_counts['cz']
+# depth = ansatz_isa.depth()
+# print("Operation counts:", op_counts)
+# print("Total number of gates:", total_gates)
+# print("Depth of the circuit: ", depth)
 
-data_depth = {
-    "Experiment": ["Hardware XY-QAOA"],
-    "Total number of gates": [total_gates],
-    "Depth of the circuit": [depth],
-    "CNOTs": [CNOTs]
-}
+# data_depth = {
+#     "Experiment": ["Hardware XY-QAOA"],
+#     "Total number of gates": [total_gates],
+#     "Depth of the circuit": [depth],
+#     "CNOTs": [CNOTs]
+# }
 
-df_depth = pd.DataFrame(data_depth)
-df_depth.to_csv(file_path_depth, index=False)
+# df_depth = pd.DataFrame(data_depth)
+# df_depth.to_csv(file_path_depth, index=False)
 
 
-# %%
-session = Session(backend=backend)
-print('\nhere 1')
-sampler = Sampler(backend=backend, session=session)
-print('here 2')
-qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
-print('here 3')
-result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
+# # %%
+# session = Session(backend=backend)
+# print('\nhere 1')
+# sampler = Sampler(backend=backend, session=session)
+# print('here 2')
+# qaoa2 = SamplingVQE(sampler=sampler, ansatz=ansatz_isa, optimizer=COBYLA(), initial_point=initial_point)
+# print('here 3')
+# result2 = qaoa2.compute_minimum_eigenvalue(hamiltonian_isa)
 
-print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
-print('best measurement', result2.best_measurement)
-print('Optimal parameters: ', result2.optimal_parameters)
-print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']) + N*P + k)
+# print("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
+# print('best measurement', result2.best_measurement)
+# print('Optimal parameters: ', result2.optimal_parameters)
+# print('The ground state energy with noisy QAOA is: ', np.real(result2.best_measurement['value']) + N*P + k)
 
-# %%
-jobs = service.jobs(session_id='crsn8xvx484g008f4200')
+# # %%
+# jobs = service.jobs(session_id='crsn8xvx484g008f4200')
 
-for job in jobs:
-    if job.status().name == 'DONE':
-        results = job.result()
-        print("Job completed successfully")
-else:
-    print("Job status:", job.status())
+# for job in jobs:
+#     if job.status().name == 'DONE':
+#         results = job.result()
+#         print("Job completed successfully")
+# else:
+#     print("Job status:", job.status())
 
-# %%
-total_usage_time = 0
-for job in jobs:
-    job_result = job.usage_estimation['quantum_seconds']
-    total_usage_time += job_result
+# # %%
+# total_usage_time = 0
+# for job in jobs:
+#     job_result = job.usage_estimation['quantum_seconds']
+#     total_usage_time += job_result
 
-print(f"Total Usage Time Hardware: {total_usage_time} seconds")
-print('\n\n')
+# print(f"Total Usage Time Hardware: {total_usage_time} seconds")
+# print('\n\n')
 
-with open(file_path, "a") as file:
-    file.write("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
-    file.write(f"'best measurement' {result2.best_measurement}")
-    file.write(f"Optimal parameters: {result2.optimal_parameters}")
-    file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value']) + N*P + k}")
-    file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
-    file.write(f"Total number of gates: {total_gates}\n")   
-    file.write(f"Depth of circuit: {depth}\n")
+# with open(file_path, "a") as file:
+#     file.write("\n\nThe result of the noisy quantum optimisation using QAOAAnsatz is: \n")
+#     file.write(f"'best measurement' {result2.best_measurement}")
+#     file.write(f"Optimal parameters: {result2.optimal_parameters}")
+#     file.write(f"'The ground state energy with noisy QAOA is: ' {np.real(result2.best_measurement['value']) + N*P + k}")
+#     file.write(f"Total Usage Time Hardware: {total_usage_time} seconds")
+#     file.write(f"Total number of gates: {total_gates}\n")   
+#     file.write(f"Depth of circuit: {depth}\n")
 
-# %%
-index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
+# # %%
+# index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
 
-measured_bitstring = result2.best_measurement['bitstring']
-original_bitstring = ['']*num_qubits
+# measured_bitstring = result2.best_measurement['bitstring']
+# original_bitstring = ['']*num_qubits
 
-for i, logical in enumerate(index):
-        original_bitstring[i] = measured_bitstring[logical]
+# for i, logical in enumerate(index):
+#         original_bitstring[i] = measured_bitstring[logical]
 
-original_bitstring = ''.join(original_bitstring)
-print("Original bitstring:", original_bitstring)
+# original_bitstring = ''.join(original_bitstring)
+# print("Original bitstring:", original_bitstring)
 
-data = {
-    "Experiment": ["Classical Optimisation", "Quantum Optimisation (QAOA)", "Noisy Quantum Optimisation (Aer Simulator)", "Quantum Optimisation (QAOAAnsatz)"],
-    "Ground State Energy": [eigenvalues[0], result.optimal_value + k, np.real(result1.best_measurement['value'] + k), np.real(result2.best_measurement['value'])],
-    "Best Measurement": ["N/A", result.optimal_parameters, result1.best_measurement, result2.best_measurement],
-    "Optimal Parameters": ["N/A", "N/A", "N/A", result2.optimal_parameters],
-    "Execution Time (seconds)": [elapsed_time, elapsed_time, elapsed_time1, total_usage_time],
-    "Total Gates": ["N/A", "N/A", total_gates, total_gates],
-    "Circuit Depth": ["N/A", "N/A", depth, depth]
-}
+# data = {
+#     "Experiment": ["Classical Optimisation", "Quantum Optimisation (QAOA)", "Noisy Quantum Optimisation (Aer Simulator)", "Quantum Optimisation (QAOAAnsatz)"],
+#     "Ground State Energy": [eigenvalues[0], result.optimal_value + k, np.real(result1.best_measurement['value'] + k), np.real(result2.best_measurement['value'])],
+#     "Best Measurement": ["N/A", result.optimal_parameters, result1.best_measurement, result2.best_measurement],
+#     "Optimal Parameters": ["N/A", "N/A", "N/A", result2.optimal_parameters],
+#     "Execution Time (seconds)": [elapsed_time, elapsed_time, elapsed_time1, total_usage_time],
+#     "Total Gates": ["N/A", "N/A", total_gates, total_gates],
+#     "Circuit Depth": ["N/A", "N/A", depth, depth]
+# }
 
-df.to_csv(file_path, index=False)
+# df.to_csv(file_path, index=False)

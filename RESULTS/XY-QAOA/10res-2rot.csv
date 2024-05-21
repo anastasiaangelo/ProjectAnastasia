@@ -1,2 +1,3 @@
 Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits
 Aer Simulation XY QAOA,24.926657482981682,"{'state': 431461, 'bitstring': '01101001010101100101', 'value': (-9.80334672704339+0j), 'probability': 0.0022}",416.1227159500122,20
+"Aer Simulation XY QAOA, post-selected",24.926660642027855,10100110101010010110,208.47051906585693,20,1000,0.10135859849839113,1

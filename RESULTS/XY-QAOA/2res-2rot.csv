@@ -1,0 +1,2 @@
+Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits,shots,Fraction of bitstrings that satisfy the Hamming constraint,Iteration Ground State
+"Aer Simulation XY QAOA, post-selected",2.557400405406952,1010,104.12501811981201,4,5000,0.2744360902255639,0

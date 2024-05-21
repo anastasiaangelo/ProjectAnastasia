@@ -1,0 +1,2 @@
+Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits,shots
+"Aer Simulation XY QAOA, post-selected",13.832566112279892,001100001010100001001001010,14777.997220039368,27,8000

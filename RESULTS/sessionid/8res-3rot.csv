@@ -1,0 +1,2 @@
+Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits,Fraction of bitstrings that satisfy the Hamming constraint
+Hardware simulation QAOAAnsatz,24.64136517047882,100010001001001001010001,31.1476346512525,24,0.000900360144057623

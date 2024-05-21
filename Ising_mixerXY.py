@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/XY-QAOA/5res-2rot.csv"
+file_path = "RESULTS/XY-QAOA/2res-2rot.csv"
 file_path_depth = "RESULTS/Depths/XY-QAOA/4res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -323,7 +323,6 @@ for state, prob in final_bitstrings.items():
         all_bitstrings[bitstring]['count'] += 1
 
 total_bitstrings = len(final_bitstrings) + sum(len(data['quasi_distributions'][0]) for data in intermediate_data)
-# hamming_satisfying_bitstrings = len(all_bitstrings)
 hamming_satisfying_bitstrings = sum(bitstring_data['count'] for bitstring_data in all_bitstrings.values())
 fraction_satisfying_hamming = hamming_satisfying_bitstrings / total_bitstrings
 print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")

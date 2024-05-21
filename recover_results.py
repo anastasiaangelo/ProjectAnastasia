@@ -194,7 +194,7 @@ qc.initialize(state_vector, range(num_qubits))
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit import transpile, QuantumCircuit, QuantumRegister
-from qiskit.transpiler import CouplingMap, Layout
+from qiskit.transpiler import Layout
 
 service = QiskitRuntimeService()
 backend = service.backend("ibm_torino")
@@ -229,8 +229,6 @@ ansatz_one_rep_isa = transpile(ansatz_one_rep, backend=backend, initial_layout=t
 hamiltonian_isa_one_rep = q_hamiltonian.apply_layout(ansatz_one_rep_isa.layout)
 print("\n\nAnsatz layout after transpilation:", hamiltonian_isa_one_rep)
 
-
-
 # %%
 jobs = service.jobs(session_id='cs3kwm275q40008ttagg')
 
@@ -255,20 +253,6 @@ def check_hamming(bitstring, substring_size):
     substrings = [bitstring[i:i+substring_size] for i in range(0, len(bitstring), substring_size)]
     return all(sub.count('1') == 1 for sub in substrings)
 
-def extend_hamiltonian_with_ancillas(hamiltonian, num_ancillas):
-    """Extend the Hamiltonian to include ancilla qubits with zero coefficients."""
-    num_logical_qubits = hamiltonian.num_qubits
-    total_qubits = num_logical_qubits + num_ancillas
-    identity_term = SparsePauliOp(Pauli('I' * total_qubits), coeffs=[0])
-    
-    for pauli, coeff in zip(hamiltonian.paulis, hamiltonian.coeffs):
-        extended_pauli = Pauli(pauli.to_label() + 'I' * num_ancillas)
-        term = SparsePauliOp(extended_pauli, coeffs=[coeff])
-        identity_term += term
-        
-    return identity_term
-
-
 def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
     """
     Calculate the energy of a given bitstring for a specified Hamiltonian.
@@ -282,8 +266,7 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
         float: The calculated energy of the bitstring.
     """
     # Prepare the quantum circuit for the bitstring
-    num_qubits_qc = ansatz_one_rep_isa.num_qubits
-    print('qubits in cirucit ', num_qubits_qc)
+    num_qubits_qc = len(bitstring)
     qc = QuantumCircuit(num_qubits_qc)
     for i, char in enumerate(bitstring):
         if char == '1':
@@ -295,9 +278,7 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
 
     qc = transpile(qc, backend=backend, coupling_map=filtered_coupling_map)
     estimator = Estimator()
-    extended_hamiltonian = extend_hamiltonian_with_ancillas(hamiltonian, num_ancillas)
-    print('extended ham ', extended_hamiltonian)
-    resultt = estimator.run(observables=[extended_hamiltonian], circuits=[qc], backend=backend).result()
+    resultt = estimator.run(observables=[hamiltonian], circuits=[qc], backend=backend).result()
 
     return resultt.values[0].real
 
@@ -317,7 +298,6 @@ def get_best_measurement_from_sampler_result(sampler_result, num_qubits, num_anc
         for state, probability in quasi_distribution.items():
             bitstring = int_to_bitstring(state, num_qubits)
             logical_bitstring = bitstring[:logical_qubits]
-            print('logical bitstring', logical_bitstring)
             total_bitstrings += 1
             if check_hamming(logical_bitstring, num_rot):
                 energy = calculate_bitstring_energy(logical_bitstring, q_hamiltonian, backend)
@@ -356,13 +336,13 @@ df = pd.DataFrame(data)
 df.to_csv(file_path, index=False)
 
 # %%
-index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
+# index = ansatz_isa.layout.final_index_layout() # Maps logical qubit index to its position in bitstring
 
-measured_bitstring = best_bitstring
-original_bitstring = ['']*num_qubits
+# measured_bitstring = best_bitstring
+# original_bitstring = ['']*num_qubits
 
-for i, logical in enumerate(index):
-        original_bitstring[i] = measured_bitstring[logical]
+# for i, logical in enumerate(index):
+#         original_bitstring[i] = measured_bitstring[logical]
 
-original_bitstring = ''.join(original_bitstring)
-print("Original bitstring:", original_bitstring)
+# original_bitstring = ''.join(original_bitstring)
+# print("Original bitstring:", original_bitstring)

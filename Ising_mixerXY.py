@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/XY-QAOA/2res-2rot.csv"
+file_path = "RESULTS/XY-QAOA/5res-2rot.csv"
 file_path_depth = "RESULTS/Depths/XY-QAOA/4res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -322,10 +322,18 @@ for state, prob in final_bitstrings.items():
         all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
         all_bitstrings[bitstring]['count'] += 1
 
-total_bitstrings = len(final_bitstrings) + sum(len(data['quasi_distributions'][0]) for data in intermediate_data)
-hamming_satisfying_bitstrings = sum(bitstring_data['count'] for bitstring_data in all_bitstrings.values())
+total_bitstrings = sum(
+    probability * options['shots']
+    for data in intermediate_data
+    for distribution in data['quasi_distributions']
+    for int_bitstring, probability in distribution.items()
+) + sum(probability * options['shots'] for state, probability in final_bitstrings.items()
+)
+
+hamming_satisfying_bitstrings = sum(bitstring_data['probability']* options['shots'] for bitstring_data in all_bitstrings.values())
 fraction_satisfying_hamming = hamming_satisfying_bitstrings / total_bitstrings
 print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")
+
 
 sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
 ground_state_repetition = sorted_bitstrings[0][1]['index']
@@ -413,25 +421,12 @@ print('\n\nQAOAAnsatz: ', ansatz)
 target = backend.target
 
 # %%
-def generate_linear_coupling_map(num_qubits):
-    coupling_list = [[i, i + 1] for i in range(num_qubits - 1)]
-    return CouplingMap(couplinglist=coupling_list)
+filtered_coupling_map = [coupling for coupling in backend.configuration().coupling_map if coupling[0] < num_qubits and coupling[1] < num_qubits]
 
-linear_coupling_map = generate_linear_coupling_map(num_qubits)
-# coupling_map = CouplingMap(couplinglist=[[0, 1],[0, 15], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [13, 12], [13, 14], [14, 13], [15, 0], [16, 4], [17, 8]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [25, 35], [26, 25], [26, 27], [27, 17], [27, 26]])
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 15], [1, 0], [1, 2], [2, 1], [2, 3], [3, 2], [3, 4], [4, 3], [4, 5], [4, 16], [5, 4], [5, 6], [6, 5], [6, 7], [7, 6], [7, 8], [8, 7], [8, 9], [8, 17], [9, 8], [9, 10], [10, 9], [10, 11], [11, 10], [11, 12], [12, 11], [12, 13], [12, 18], [13, 12], [13, 14], [14, 13], [15, 0], [15, 19], [16, 4], [16, 23], [17, 8], [17, 27], [18, 12], [19, 15], [19, 20], [20, 19], [20, 21], [21, 20], [21, 22], [22, 21], [22, 23], [23, 16], [23, 22], [23, 24], [24, 23], [24, 25], [25, 24], [25, 26], [26, 25], [26, 27], [27, 17], [27, 26], [27, 28], [28, 27], [28, 29], [29, 28]])
-
-# coupling_map = CouplingMap(couplinglist=[[0, 1], [0, 14], [1, 2], [3, 2], [3, 4], [4, 15], [5, 4], [6, 5], [6, 7], [7, 8], [8, 16], [9, 8], [9, 10], [10, 11], [12, 11], [13, 12], [15, 22], [17, 12], [18, 14], [18, 19], [20, 19], [20, 21], [21, 22], [23, 22], [24, 23], [25, 24]])
 qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=linear_coupling_map,
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=filtered_coupling_map,
                        optimization_level=3, layout_method='trivial', routing_method='stochastic')
 print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 

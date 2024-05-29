@@ -1,3 +1,3 @@
-Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits
+Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits,shots,Fraction,Iteration Ground State
 "Aer Simulation Local Penalty QAOA, post-selected",29.355983436107635,010010100100100001001100,937.6201269626617,24
 "Aer Simulation Local Penalty QAOA, post-selected",25.066180139780045,001001001100010010001010,725.445689201355,24,5000

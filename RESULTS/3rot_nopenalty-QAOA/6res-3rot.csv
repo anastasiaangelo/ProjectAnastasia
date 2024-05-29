@@ -1,2 +1,2 @@
 Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits
-Brute Force 3rot QAOA,15.883569076657295,010100100010001100,4829.286400079727,18
+Brute Force 3rot QAOA,15.891540765762329,010100100010001100,0.8080599308013916,18

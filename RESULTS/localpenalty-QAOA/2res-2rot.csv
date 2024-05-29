@@ -1,2 +1,0 @@
-Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits,shots,Fraction of bitstrings that satisfy the Hamming constraint,Iteration Ground State
-Aer Simulation Local Penalty QAOA,2.557400405406952,"{'state': 5, 'bitstring': '0101', 'value': (-12.22919961810112+0j), 'probability': 0.083}",195.2886459827423,4,5000,0.25,0

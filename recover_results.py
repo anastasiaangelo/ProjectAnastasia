@@ -7,7 +7,7 @@ import pandas as pd
 from copy import deepcopy
 
 num_rot = 3
-file_path = "RESULTS/sessionid/8res-3rot.csv"
+file_path = "RESULTS/hardware/12res-3rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -114,7 +114,6 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
-
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
@@ -182,7 +181,7 @@ def generate_initial_bitstring(num_qubits):
     pattern = '100'
     bitstring = (pattern * (num_qubits // 3 + 1))[:num_qubits]
     return bitstring
-
+# %%
 initial_bitstring = generate_initial_bitstring(num_qubits)
 state_vector = np.zeros(2**num_qubits)
 indexx = int(initial_bitstring, 2)
@@ -203,10 +202,10 @@ print('Coupling Map of hardware: ', backend.configuration().coupling_map)
 ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=XY_mixer, reps=p)
 print('\n\nQAOAAnsatz: ', ansatz)
 
-opt_parameters = [3.15625, 1.0]
-ansatz_one_rep = QAOAAnsatz(q_hamiltonian, mixer_operator=XY_mixer, reps=1)
-params_dict = {param: value for param, value in zip(ansatz_one_rep.parameters, opt_parameters)}
-bound_circuit = ansatz_one_rep.assign_parameters(params_dict)
+# opt_parameters = [3.15625, 1.0]
+# ansatz_one_rep = QAOAAnsatz(q_hamiltonian, mixer_operator=XY_mixer, reps=1)
+# params_dict = {param: value for param, value in zip(ansatz_one_rep.parameters, opt_parameters)}
+# bound_circuit = ansatz_one_rep.assign_parameters(params_dict)
 
 target = backend.target
 
@@ -217,20 +216,20 @@ qr = QuantumRegister(num_qubits, 'q')
 circuit = QuantumCircuit(qr)
 trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
 
-# ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=filtered_coupling_map,
-#                        optimization_level= 3, layout_method='dense', routing_method='stochastic')
-# print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
+ansatz_isa = transpile(ansatz, backend=backend, initial_layout=trivial_layout, coupling_map=filtered_coupling_map,
+                       optimization_level= 3, layout_method='dense', routing_method='stochastic')
+print("\n\nAnsatz layout after explicit transpilation:", ansatz_isa._layout)
 
-# hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
-# print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
+hamiltonian_isa = q_hamiltonian.apply_layout(ansatz_isa.layout)
+print("\n\nAnsatz layout after transpilation:", hamiltonian_isa)
 
-ansatz_one_rep_isa = transpile(ansatz_one_rep, backend=backend, initial_layout=trivial_layout, coupling_map=filtered_coupling_map,
-                               optimization_level=3, layout_method='trivial', routing_method='stochastic')
-hamiltonian_isa_one_rep = q_hamiltonian.apply_layout(ansatz_one_rep_isa.layout)
-print("\n\nAnsatz layout after transpilation:", hamiltonian_isa_one_rep)
+# ansatz_one_rep_isa = transpile(ansatz_one_rep, backend=backend, initial_layout=trivial_layout, coupling_map=filtered_coupling_map,
+#                                optimization_level=3, layout_method='trivial', routing_method='stochastic')
+# hamiltonian_isa_one_rep = q_hamiltonian.apply_layout(ansatz_one_rep_isa.layout)
+# print("\n\nAnsatz layout after transpilation:", hamiltonian_isa_one_rep)
 
 # %%
-jobs = service.jobs(session_id='cs3kwm275q40008ttagg')
+jobs = service.jobs(session_id='csawz5m7yykg0082qj6g')
 
 for job in jobs:
     if job.status().name == 'DONE':
@@ -297,21 +296,21 @@ def get_best_measurement_from_sampler_result(sampler_result, num_qubits, num_anc
     for quasi_distribution in sampler_result.quasi_dists:
         for state, probability in quasi_distribution.items():
             bitstring = int_to_bitstring(state, num_qubits)
-            logical_bitstring = bitstring[:logical_qubits]
+            # logical_bitstring = bitstring[:logical_qubits]
             total_bitstrings += 1
-            if check_hamming(logical_bitstring, num_rot):
-                energy = calculate_bitstring_energy(logical_bitstring, q_hamiltonian, backend)
-                print(f"Bitstring: {logical_bitstring}, Energy: {energy}, Probability: {probability}")
+            if check_hamming(bitstring, num_rot):
+                energy = calculate_bitstring_energy(bitstring, q_hamiltonian, backend)
+                print(f"Bitstring: {bitstring}, Energy: {energy}, Probability: {probability}")
                 valid_bitstrings += 1
                 if energy < lowest_energy:
                     lowest_energy = energy
-                    best_bitstring = logical_bitstring
+                    best_bitstring = bitstring
                     highest_probability = probability
 
     return best_bitstring, highest_probability, lowest_energy, total_bitstrings, valid_bitstrings
 
-num_ancillas = ansatz_one_rep_isa.num_qubits - num_qubits
-best_bitstring, probability, value, total_bitstrings, valid_bitstrings = get_best_measurement_from_sampler_result(results, ansatz_one_rep_isa.num_qubits, num_ancillas)
+num_ancillas = ansatz_isa.num_qubits - num_qubits
+best_bitstring, probability, value, total_bitstrings, valid_bitstrings = get_best_measurement_from_sampler_result(results, ansatz_isa.num_qubits, num_ancillas)
 fraction_satisfying_hamming = valid_bitstrings / total_bitstrings
 print(f"Best measurement: {best_bitstring} with ground state energy {value+k} and probability {probability}")
 print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")

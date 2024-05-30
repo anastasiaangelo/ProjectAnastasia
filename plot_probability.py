@@ -113,5 +113,5 @@ ax.legend()
 ax.set_xticks(x3)
 
 plt.tight_layout()
-plt.savefig("prob_distributions.pdf")
+plt.savefig("Paper Plots/prob_distributions.pdf")
 plt.show()

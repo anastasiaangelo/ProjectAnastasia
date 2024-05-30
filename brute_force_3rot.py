@@ -11,7 +11,7 @@ from copy import deepcopy
 import sys
 
 num_rot = 3
-file_path = "RESULTS/3rot_nopenalty-QAOA/10res-3rot.csv"
+file_path = "RESULTS/3rot_nopenalty-QAOA/11res-3rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -68,6 +68,7 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import Statevector, Operator
 
 time_i = time.time()
+print('starting brute force')
 def generate_bitstrings(num_qubits):
     return [''.join(x) for x in itertools.product('01', repeat=num_qubits)]
 
@@ -121,8 +122,10 @@ substring_size = num_rot
 #     chunk_counter += 1
 
 valid_samples = []
+print('generating bitstrings...')
 for bitstring in generate_bitstrings(num_qubits):
     if check_hamming(bitstring, num_rot):
+        print('valid bitstring found')
         valid_samples.append(bitstring)
 
 print("Valid samples found:", len(valid_samples))
@@ -163,3 +166,6 @@ data = {
 
 df = pd.DataFrame(data)
 df.to_csv(file_path, index=False)
+
+
+# %%

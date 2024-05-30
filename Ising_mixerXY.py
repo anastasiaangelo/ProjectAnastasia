@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/XY-QAOA/5res-2rot.csv"
+file_path = "RESULTS/XY-QAOA/10res-2rot.csv"
 file_path_depth = "RESULTS/Depths/XY-QAOA/4res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -336,7 +336,7 @@ print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_sa
 
 
 sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
-ground_state_repetition = sorted_bitstrings[0][1]['index']
+# ground_state_repetition = sorted_bitstrings[0][1]['index']
 
 print("Best Measurement:", best_measurement)
 print("Sorted Bitstrings: ")
@@ -355,8 +355,9 @@ for bitstring, data in sorted_bitstrings:
             "Execution Time (seconds)": [elapsed_time1],
             "Number of qubits": [num_qubits],
             "shots": [options['shots']],
-            "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
-            "Iteration Ground State": [ground_state_repetition]
+            "Fraction": [fraction_satisfying_hamming],
+            # "Iteration Ground State": [ground_state_repetition],
+            "Sorted Bitstrings": [sorted_bitstrings]
         }
         found = True
         break
@@ -371,8 +372,9 @@ if not found:
         "Execution Time (seconds)": [elapsed_time1],
         "Number of qubits": [num_qubits],
         "shots": [options['shots']],
-        "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
-        "Iteration Ground State": [ground_state_repetition]
+        "Fraction": [fraction_satisfying_hamming],
+        # "Iteration Ground State": [ground_state_repetition],
+        "Sorted Bitstrings": [sorted_bitstrings]
     }
 
 df = pd.DataFrame(data)

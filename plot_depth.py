@@ -4,13 +4,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Define the paths
-folder_paths = {
-    "local": "RESULTS/Depths/localpenalty-QAOA-noopt",
-    "XY": "RESULTS/Depths/XY-QAOA-noopt",
-    "no_penalty": "RESULTS/nopenalty-QAOA",
-    "local_3rot": "RESULTS/Depths/3rot-localpenalty-QAOA-noopt",
-    "XY_3rot": "RESULTS/Depths/3rot-XY-QAOA-noopt"
-}
+# folder_paths = {
+#     "local": "RESULTS/Depths/localpenalty-QAOA-noopt",
+#     "XY": "RESULTS/Depths/XY-QAOA-noopt",
+#     "no_penalty": "RESULTS/nopenalty-QAOA",
+#     "local_3rot": "RESULTS/Depths/3rot-localpenalty-QAOA-noopt",
+#     "XY_3rot": "RESULTS/Depths/3rot-XY-QAOA-noopt"
+# }
 
 # folder_paths = {
 #     "local": "RESULTS/Depths/localpenalty-QAOA-basic",
@@ -20,13 +20,13 @@ folder_paths = {
 #     "XY_3rot": "RESULTS/Depths/3rot-XY-QAOA-basic"
 # }
 
-# folder_paths = {
-#     "local": "RESULTS/Depths/localpenalty-QAOA",
-#     "XY": "RESULTS/Depths/XY-QAOA",
-#     "no_penalty": "RESULTS/nopenalty-QAOA",
-#     "local_3rot": "RESULTS/Depths/3rot-localpenalty-QAOA",
-#     "XY_3rot": "RESULTS/Depths/3rot-XY-QAOA"
-# }
+folder_paths = {
+    "local": "RESULTS/Depths/localpenalty-QAOA",
+    "XY": "RESULTS/Depths/XY-QAOA",
+    "no_penalty": "RESULTS/nopenalty-QAOA",
+    "local_3rot": "RESULTS/Depths/3rot-localpenalty-QAOA",
+    "XY_3rot": "RESULTS/Depths/3rot-XY-QAOA"
+}
 
 
 def custom_sort_key(filename):
@@ -88,6 +88,7 @@ ax.plot(x3, y_XY_3rot, label="XY mixer 3 rot", marker='1')
 
 ax.set_xlabel("Number of Qubits")
 ax.set_ylabel("Number of CNOTs")
-ax.set_title("Number of CNOTs by Number of Qubits Basic Routing and 3 level optimisation")
+ax.set_title("Number of CNOTs by Number of Qubits Stochastic Routing and 3 level optimisation")
 ax.legend()
+plt.savefig('CNOTS_stochastic_3opt.pdf')
 plt.show()

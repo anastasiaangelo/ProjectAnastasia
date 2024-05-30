@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/5res-2rot.csv"
+file_path = "RESULTS/localpenalty-QAOA/7res-2rot.csv"
 file_path_depth = "RESULTS/Depths/localpenalty-QAOA-noopt/15res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -351,7 +351,7 @@ for bitstring, data in sorted_bitstrings:
             "Execution Time (seconds)": [elapsed_time1],
             "Number of qubits": [num_qubits],
             "shots": [options['shots']],
-            "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
+            "Fraction": [fraction_satisfying_hamming],
             "Iteration Ground State": [ground_state_repetition]
         }
         found = True
@@ -367,7 +367,7 @@ if not found:
         "Execution Time (seconds)": [elapsed_time1],
         "Number of qubits": [num_qubits],
         "shots": [options['shots']],
-        "Fraction of bitstrings that satisfy the Hamming constraint": [fraction_satisfying_hamming],
+        "Fraction": [fraction_satisfying_hamming],
         "Iteration Ground State": [ground_state_repetition]
     }
 

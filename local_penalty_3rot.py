@@ -10,7 +10,7 @@ from copy import deepcopy
 import os
 
 num_rot = 3
-file_path = "RESULTS/3rot-localpenalty-QAOA/9res-3rot.csv"
+file_path = "RESULTS/3rot-localpenalty-QAOA/7res-3rot.csv"
 file_path_depth = "RESULTS/Depths/3rot-localpenalty-QAOA-noopt/10res-3rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -265,6 +265,20 @@ for data in intermediate_data:
 
 sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
 
+total_bitstrings = sum(
+    probability * options['shots']
+    for data in intermediate_data
+    for distribution in data['quasi_distributions']
+    for int_bitstring, probability in distribution.items()
+) + sum(
+    probability * options['shots'] for state, probability in final_bitstrings.items()
+)
+hamming_satisfying_bitstrings = sum(bitstring_data['probability'] * options['shots'] for bitstring_data in all_bitstrings.values())
+fraction_satisfying_hamming = hamming_satisfying_bitstrings / total_bitstrings
+print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")
+
+ground_state_repetition = sorted_bitstrings[0][1]['index']
+
 print("Best Measurement:", best_measurement)
 for bitstring, data in sorted_bitstrings:
     print(f"Bitstring: {bitstring}, Probability: {data['probability']}, Energy: {data['energy']}")
@@ -280,7 +294,10 @@ for bitstring, data in sorted_bitstrings:
             "Best Measurement": [result1.best_measurement],
             "Execution Time (seconds)": [elapsed_time1],
             "Number of qubits": [num_qubits],
-            "shots": [options['shots']]
+            "shots": [options['shots']],
+            "Fraction": [fraction_satisfying_hamming],
+            "Iteration Ground State": [ground_state_repetition]
+
         }
         found = True
         break
@@ -294,7 +311,10 @@ if not found:
         "Best Measurement": [post_selected_bitstring],
         "Execution Time (seconds)": [elapsed_time1],
         "Number of qubits": [num_qubits],
-        "shots": [options['shots']]
+        "shots": [options['shots']],
+        "Fraction": [fraction_satisfying_hamming],
+        "Iteration Ground State": [ground_state_repetition]
+
     }
 
 df = pd.DataFrame(data)

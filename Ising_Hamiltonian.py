@@ -1,6 +1,6 @@
 ### Take input pdb, score, repack and extract one and two body energies
 # Script for generating the test sturcture with its rotamers 
-# lines 23 and 87 to vary
+#  lines 23 and 87 to vary
 import pyrosetta
 pyrosetta.init()
 
@@ -21,7 +21,7 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction, change PDB files
-pose = pyrosetta.pose_from_pdb("input_files/5residue.pdb")
+pose = pyrosetta.pose_from_pdb("input_files/12residue.pdb")
 
 
 residue_count = pose.total_residue()

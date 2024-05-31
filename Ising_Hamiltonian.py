@@ -21,7 +21,7 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction, change PDB files
-pose = pyrosetta.pose_from_pdb("input_files/12residue.pdb")
+pose = pyrosetta.pose_from_pdb("input_files/4residue.pdb")
 
 
 residue_count = pose.total_residue()

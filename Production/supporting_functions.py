@@ -142,6 +142,37 @@ def get_XY_mixer(num_qubits, num_rot):
     else:
         raise ValueError("Number of rotomers not supported.")
     
+def generate_pauli_zij(n, i, j):
+    if i<0 or i >= n or j<0 or j>=n:
+        raise ValueError(f"Indices out of bounds for n={n} qubits. ")
+        
+    pauli_str = ['I']*n
+
+    if i == j:
+        pauli_str[i] = 'Z'
+    else:
+        pauli_str[i] = 'Z'
+        pauli_str[j] = 'Z'
+
+    return Pauli(''.join(pauli_str))
+
+def get_q_hamiltonian(num_qubits, H):
+    q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
+
+    for i in range(num_qubits):
+        for j in range(i+1, num_qubits):
+            if H[i][j] != 0:
+                pauli = generate_pauli_zij(num_qubits, i, j)
+                op = SparsePauliOp(pauli, coeffs=[H[i][j]])
+                q_hamiltonian += op
+
+    for i in range(num_qubits):
+        pauli = generate_pauli_zij(num_qubits, i, i)
+        Z_i = SparsePauliOp(pauli, coeffs=[H[i][i]])
+        q_hamiltonian += Z_i
+
+    return q_hamiltonian
+    
 def generate_initial_bitstring(num_qubits, num_rot):
     if num_rot == 2:
         bitstring = [(i%2) for i in range(num_qubits)]
@@ -207,3 +238,13 @@ def safe_literal_eval(value):
     except (ValueError, SyntaxError) as e:
         print(f"Error evaluating string: {value}, {e}")
         return None
+    
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)

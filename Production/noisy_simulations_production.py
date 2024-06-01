@@ -82,7 +82,7 @@ def noisy_simulation(num_rot, num_res, alpha, shots, p):
     # %%
     intermediate_data = []
     noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
-
+    
     # %%
     start_time1 = time.time()
     qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, initial_state=qc, mixer=XY_mixer, initial_point=initial_point,callback=callback, aggregation=alpha)

@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 import pandas as pd
 import ast
+import json
 
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp

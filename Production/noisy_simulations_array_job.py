@@ -16,7 +16,7 @@ if __name__ == "__main__":
             for shots in shots_arr:
                 for alpha in alpha_arr:
                     if count == match:
-                        NSP.noisy_simulation(num_rot, num_res, shots, alpha, p)
+                        NSP.noisy_simulation(num_rot, num_res, shots, alpha, p_arr)
                         break
                     count += 1
 

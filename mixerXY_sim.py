@@ -489,7 +489,7 @@ from copy import deepcopy
 import os
 
 num_rot = 3
-file_path = "RESULTS/3rot-XY-QAOA/6res-3rot.csv"
+file_path = "RESULTS/3rot-XY-QAOA/4res-3rot.csv"
 # file_path = "RESULTS/hardware/7res-3rot-XY-hw.csv"
 file_path_depth = "RESULTS/Depths/7rot-XY-QAOA-hw/7res-3rot.csv"
 
@@ -815,18 +815,21 @@ for data in intermediate_data:
                 all_bitstrings[intermediate_bitstring]['energy'] = (all_bitstrings[intermediate_bitstring]['energy'] * all_bitstrings[intermediate_bitstring]['count'] + energy) / (all_bitstrings[intermediate_bitstring]['count'] + 1)
                 all_bitstrings[intermediate_bitstring]['count'] += 1
 
+total_probabilities = sum(bitstring_data['probability'] for bitstring_data in all_bitstrings.values())
+for bitstring_data in all_bitstrings.values():
+    bitstring_data['probability'] /= total_probabilities
 
 sorted_bitstrings = sorted(all_bitstrings.items(), key=lambda x: x[1]['energy'])
 
 total_bitstrings = sum(
-    probability * options['shots']
+    probability * options['shots'] 
     for data in intermediate_data
     for distribution in data['quasi_distributions']
     for int_bitstring, probability in distribution.items()
 ) + sum(probability * options['shots'] for state, probability in final_bitstrings.items()
 )
 
-hamming_satisfying_bitstrings = sum(bitstring_data['probability']* options['shots'] for bitstring_data in all_bitstrings.values())
+hamming_satisfying_bitstrings = sum(bitstring_data['probability'] * options['shots'] for bitstring_data in all_bitstrings.values())
 fraction_satisfying_hamming = hamming_satisfying_bitstrings / total_bitstrings
 print(f"Fraction of bitstrings that satisfy the Hamming constraint: {fraction_satisfying_hamming}")
 
@@ -849,7 +852,8 @@ for bitstring, data in sorted_bitstrings:
             "Number of qubits": [num_qubits],
             "shots": [options['shots']],
             "Fraction": [fraction_satisfying_hamming],
-            # "Iteration Ground State": [ground_state_repetition]
+            # "Iteration Ground State": [ground_state_repetition],
+            "Sorted Bitstrings": [sorted_bitstrings]
 }
         found = True
         break
@@ -865,7 +869,8 @@ if not found:
         "Number of qubits": [num_qubits],
         "shots": [options['shots']],
         "Fraction": [fraction_satisfying_hamming],
-        # "Iteration Ground State": [ground_state_repetition]
+        # "Iteration Ground State": [ground_state_repetition],
+        "Sorted Bitstrings": [sorted_bitstrings]
 
     }
 

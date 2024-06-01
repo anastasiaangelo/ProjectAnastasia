@@ -102,7 +102,6 @@ Pygments==2.17.2
 PyJWT==2.8.0
 pylatexenc==2.10
 pyparsing==3.1.2
-pyrosetta==2024.16+release.bc4dfa1b24
 pyrosetta-distributed==0.0.3
 pyrosetta-installer==0.1.1
 pyspnego==0.10.2
@@ -118,7 +117,6 @@ qiskit-aer==0.14.0.1
 qiskit-algorithms==0.3.0
 qiskit-ibm-provider==0.11.0
 qiskit-ibm-runtime==0.23.0
-qopt_best_practices @ file:///Users/aag/Documents/ProjectAnastasiaClone/ProjectAnastasia/qopt-best-practices
 qtconsole==5.5.1
 QtPy==2.4.1
 referencing==0.34.0

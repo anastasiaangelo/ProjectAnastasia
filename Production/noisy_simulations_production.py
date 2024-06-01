@@ -6,6 +6,7 @@ import pandas as pd
 import time
 from copy import deepcopy
 import os
+import pickle
 
 from supporting_functions import *
 
@@ -57,10 +58,19 @@ def noisy_simulation(num_rot, num_res, alpha, shots, p):
 
     # %%
     simulator = Aer.get_backend('qasm_simulator')
-    provider = IBMProvider()
+    
 
-    device_backend = provider.get_backend('ibm_torino')
-    noise_model = NoiseModel.from_backend(device_backend)
+    if os.path.exists('noise_model.pkl'):
+        with open('noise_model.pkl', 'rb') as f:
+            noise_model = pickle.load(f)
+    else:
+        provider = IBMProvider()
+
+        device_backend = provider.get_backend('ibm_torino')
+        noise_model = NoiseModel.from_backend(device_backend)
+
+        with open('noise_model.pkl', 'wb') as f:
+            pickle.dump(noise_model, f)
 
     # %%
     options= {

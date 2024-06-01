@@ -15,9 +15,10 @@ if __name__ == "__main__":
         for num_res in num_res_arr:
             for shots in shots_arr:
                 for alpha in alpha_arr:
-                    if count == match:
-                        NSP.noisy_simulation(num_rot, num_res, shots, alpha, p_arr)
-                        break
-                    count += 1
+                    for p in p_arr:
+                        if count == match:
+                            NSP.noisy_simulation(num_rot, num_res, shots, alpha, p)
+                            break
+                        count += 1
 
 

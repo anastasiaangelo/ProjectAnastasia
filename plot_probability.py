@@ -11,7 +11,7 @@ import ast
 #     "no_penalty": "RESULTS/nopenalty-QAOA"
 # }
 
-file_XY_3rot = "RESULTS/3rot-XY-QAOA/4res-3rot.csv"
+file_XY_3rot = "RESULTS/3rot-XY-QAOA/2res-3rot.csv"
 
 # def custom_sort_key(filename):
 #     numbers = re.findall(r'\d+', filename)

@@ -9,9 +9,10 @@ from copy import deepcopy
 import os
 
 num_rot = 3
-file_path = "RESULTS/3rot-XY-QAOA/12res-3rot.csv"
+num_res = 2
+file_path = f"RESULTS/{num_rot}rot-XY-QAOA/{num_res}res-{num_rot}rot.csv"
 # file_path = "RESULTS/hardware/7res-3rot-XY-hw.csv"
-file_path_depth = "RESULTS/Depths/3rot-XY-QAOA/12res-3rot.csv"
+file_path_depth = f"RESULTS/Depths/{num_rot}rot-XY-QAOA/{num_res}res-{num_rot}rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -400,7 +401,7 @@ if not os.path.isfile(file_path):
 else:
     # File exists, append without writing the header
     df.to_csv(file_path, mode='a', index=False, header=False)
-
+exit()
 # %% ############################################# Hardware with QAOAAnastz ##################################################################
 from qiskit.circuit.library import QAOAAnsatz
 from qiskit_algorithms import SamplingVQE

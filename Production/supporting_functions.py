@@ -15,6 +15,18 @@ from qiskit import QuantumCircuit, transpile
 
 import Ising_Hamiltonian_production as IHP
 
+def get_hyperparameters(jobid, num_rot_arr, num_res_arr, shots_arr, alpha_arr, p_arr):
+    count = 1
+    for num_rot in num_rot_arr:
+        for num_res in num_res_arr:
+            for shots in shots_arr:
+                for alpha in alpha_arr:
+                    for p in p_arr:
+                        if count == jobid:
+                            return num_rot, num_res, shots, alpha, p
+                            
+                        count += 1
+
 def get_hamiltonian(num_rot, num_res):
     IHP.create_energy_files(num_res, num_rot)
     file_path = f"RESULTS/XY-QAOA/{num_res}res-{num_rot}rot.csv"

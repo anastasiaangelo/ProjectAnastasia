@@ -1,8 +1,11 @@
 import numpy as np
+from scipy.sparse.linalg import eigsh
 from copy import deepcopy
 import pandas as pd
 import ast
 import json
+from itertools import product
+import os, sys
 
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
@@ -28,7 +31,10 @@ def get_hyperparameters(jobid, num_rot_arr, num_res_arr, shots_arr, alpha_arr, p
                         count += 1
 
 def get_hamiltonian(num_rot, num_res):
-    IHP.create_energy_files(num_res, num_rot)
+    original_stdout = sys.stdout
+    sys.stdout = open(os.devnull, 'w')
+    #IHP.create_energy_files(num_res, num_rot)
+    sys.stdout = original_stdout
     file_path = f"RESULTS/XY-QAOA/{num_res}res-{num_rot}rot.csv"
 
     df1 = pd.read_csv(f"energy_files/{num_rot}rot_{num_res}res_one_body_terms.csv")
@@ -245,6 +251,40 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
 
     return resultt.values[0].real
 
+def calculate_bitstring_energy_efficient(bitstring, hamiltonian):
+
+
+    def calculate_matrix_element(i, H):
+
+        basis_states = np.array([[1, 0], [0, 1]])
+
+        pauli_matrices = {
+            'I': np.array([[1, 0], [0, 1]]),
+            'X': np.array([[0, 1], [1, 0]]),
+            'Y': np.array([[0, -1j], [1j, 0]]),
+            'Z': np.array([[1, 0], [0, -1]])
+        }
+        state = basis_states[i]
+ 
+        matrix_element = np.dot(state, np.dot(pauli_matrices[str(H)], state))
+
+        return matrix_element
+    
+    expval = 0
+    for pauli, coeff in zip(hamiltonian.paulis, hamiltonian.coeffs):
+        coeff_pauli = 1
+        for index, bit in enumerate(bitstring):
+            coeff_pauli *= calculate_matrix_element(int(bit), pauli[index])
+            if coeff_pauli == 0:
+                break
+
+        expval += coeff * coeff_pauli
+            
+
+
+
+    return expval
+
 def safe_literal_eval(value):
     try:
         return ast.literal_eval(value)
@@ -252,6 +292,192 @@ def safe_literal_eval(value):
         print(f"Error evaluating string: {value}, {e}")
         return None
     
+
+    
+def get_ground_state_sparse_diag(H, num_qubits):
+
+
+
+    Z_matrix = np.array([[1, 0], [0, -1]])
+    identity = np.eye(2)
+
+    def construct_operator(qubit_indices, num_qubits):
+        operator = np.eye(1)
+        for qubit in range(num_qubits):
+            if qubit in qubit_indices:
+                operator = np.kron(operator, Z_matrix)
+            else:
+                operator = np.kron(operator, identity)
+        return operator
+
+    C = np.zeros((2**num_qubits, 2**num_qubits))
+
+    for i in range(num_qubits):
+        operator = construct_operator([i], num_qubits)
+        C += H[i][i] * operator
+
+    for i in range(num_qubits):
+        for j in range(i+1, num_qubits):
+            operator = construct_operator([i, j], num_qubits)
+            C += H[i][j] * operator
+
+
+
+
+
+    eigenvalues, eigenvectors = eigsh(C, k=num_qubits, which='SA')
+
+    return eigenvalues[0]
+
+def get_ground_state_efficient(num_res, num_rot):
+    ## generate all Hamming weight preserving bitstrings for the given number of rotamers and residues
+    def generate_bitstrings(num_res, num_rot):
+        # Generate a single bitstring of length num_rot with one '1'
+        single_bitstrings = ['0'*i + '1' + '0'*(num_rot-i-1) for i in range(num_rot)]
+        
+        # Generate all combinations of these single bitstrings
+        bitstrings = [''.join(p) for p in product(single_bitstrings, repeat=num_res)]
+        
+        return bitstrings
+    
+    bitstrings = generate_bitstrings(num_res, num_rot)
+
+    H = get_hamiltonian(num_rot, num_res)
+    num_qubits = num_rot * num_res
+    q_hamiltonian = get_q_hamiltonian(num_qubits, H)
+
+    # Calculate the energy of each bitstring
+
+    energies = [calculate_bitstring_energy_efficient(bitstring, q_hamiltonian) for bitstring in bitstrings]
+
+    # Find the bitstring with the lowest energy
+
+    min_energy = min(energies)
+    min_energy_index = energies.index(min_energy)
+    ground_state = bitstrings[min_energy_index]
+
+    return min_energy, ground_state
+
+def get_min_and_max_states_efficient(num_res, num_rot):
+    ## generate all Hamming weight preserving bitstrings for the given number of rotamers and residues
+    def generate_bitstrings(num_res, num_rot):
+        # Generate a single bitstring of length num_rot with one '1'
+        single_bitstrings = ['0'*i + '1' + '0'*(num_rot-i-1) for i in range(num_rot)]
+        
+        # Generate all combinations of these single bitstrings
+        bitstrings = [''.join(p) for p in product(single_bitstrings, repeat=num_res)]
+        
+        return bitstrings
+    
+    bitstrings = generate_bitstrings(num_res, num_rot)
+
+    H = get_hamiltonian(num_rot, num_res)
+    num_qubits = num_rot * num_res
+    q_hamiltonian = get_q_hamiltonian(num_qubits, H)
+
+    # Calculate the energy of each bitstring
+
+    energies = [calculate_bitstring_energy_efficient(bitstring, q_hamiltonian) for bitstring in bitstrings]
+
+    # Find the bitstring with the lowest energy
+
+    min_energy = min(energies)
+    min_energy_index = energies.index(min_energy)
+
+    max_energy = max(energies)
+    max_energy_index = energies.index(max_energy)
+    min_state = bitstrings[min_energy_index]
+    max_state = bitstrings[max_energy_index]
+
+    return min_energy, min_state, max_energy, max_state
+
+def get_ground_state_estimator(num_res, num_rot):
+    ## generate all Hamming weight preserving bitstrings for the given number of rotamers and residues
+    def generate_bitstrings(num_res, num_rot):
+        # Generate a single bitstring of length num_rot with one '1'
+        single_bitstrings = ['0'*i + '1' + '0'*(num_rot-i-1) for i in range(num_rot)]
+        
+        # Generate all combinations of these single bitstrings
+        bitstrings = [''.join(p) for p in product(single_bitstrings, repeat=num_res)]
+        
+        return bitstrings
+    
+    bitstrings = generate_bitstrings(num_res, num_rot)
+
+    H = get_hamiltonian(num_rot, num_res)
+    num_qubits = num_rot * num_res
+    q_hamiltonian = get_q_hamiltonian(num_qubits, H)
+
+    # Calculate the energy of each bitstring
+
+    energies = [calculate_bitstring_energy(bitstring, q_hamiltonian) for bitstring in bitstrings]
+
+    # Find the bitstring with the lowest energy
+
+    min_energy = min(energies)
+    min_energy_index = energies.index(min_energy)
+    ground_state = bitstrings[min_energy_index]
+
+    return min_energy, ground_state
+
+def get_all_states_efficient(num_res, num_rot):
+    ## generate all Hamming weight preserving bitstrings for the given number of rotamers and residues
+    def generate_bitstrings(num_res, num_rot):
+        # Generate a single bitstring of length num_rot with one '1'
+        single_bitstrings = ['0'*i + '1' + '0'*(num_rot-i-1) for i in range(num_rot)]
+        
+        # Generate all combinations of these single bitstrings
+        bitstrings = [''.join(p) for p in product(single_bitstrings, repeat=num_res)]
+        
+        return bitstrings
+    
+    bitstrings = generate_bitstrings(num_res, num_rot)
+
+    H = get_hamiltonian(num_rot, num_res)
+    num_qubits = num_rot * num_res
+    q_hamiltonian = get_q_hamiltonian(num_qubits, H)
+
+    # Calculate the energy of each bitstring
+
+    energies = [calculate_bitstring_energy_efficient(bitstring, q_hamiltonian) for bitstring in bitstrings]
+
+    # Find the bitstring with the lowest energy
+
+    return energies, bitstrings
+
+def get_all_states_estimator(num_res, num_rot):
+    ## generate all Hamming weight preserving bitstrings for the given number of rotamers and residues
+    def generate_bitstrings(num_res, num_rot):
+        # Generate a single bitstring of length num_rot with one '1'
+        single_bitstrings = ['0'*i + '1' + '0'*(num_rot-i-1) for i in range(num_rot)]
+        
+        # Generate all combinations of these single bitstrings
+        bitstrings = [''.join(p) for p in product(single_bitstrings, repeat=num_res)]
+        
+        return bitstrings
+    
+    bitstrings = generate_bitstrings(num_res, num_rot)
+
+    H = get_hamiltonian(num_rot, num_res)
+    num_qubits = num_rot * num_res
+    q_hamiltonian = get_q_hamiltonian(num_qubits, H)
+
+    # Calculate the energy of each bitstring
+
+    energies = [calculate_bitstring_energy(bitstring, q_hamiltonian) for bitstring in bitstrings]
+
+    # Find the bitstring with the lowest energy
+
+    return energies, bitstrings
+
+class ComplexEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, complex):
+            return [obj.real, obj.imag]
+        elif isinstance(obj, tuple):
+            return str(obj)
+        return super().default(obj)
+            
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -261,3 +487,13 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
+    
+def sparsepauliop_dict_serializer(obj):
+    if isinstance(obj, dict):
+        return {key: {'paulis': value.to_list(), 'coeffs': value.coeffs.tolist()} for key, value in obj.items()}
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+def sparsepauliop_dict_deserializer(json_str):
+    data = json.loads(json_str)
+    return {key: SparsePauliOp.from_list(value['paulis'], value['coeffs']) for key, value in data.items()}
+

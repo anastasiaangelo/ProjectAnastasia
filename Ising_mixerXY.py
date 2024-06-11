@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/XY-QAOA/10res-2rot.csv"
+file_path = "RESULTS/XY-QAOA/4res-2rot.csv"
 file_path_depth = "RESULTS/Depths/XY-QAOA/4res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -386,6 +386,9 @@ else:
     # File exists, append without writing the header
     df.to_csv(file_path, mode='a', index=False, header=False)
 
+print("Ground state energy: ", post_selected_energy['energy'] + k)
+print("Ground state energy without k: ", post_selected_energy['energy'])
+exit()
 # %%
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)

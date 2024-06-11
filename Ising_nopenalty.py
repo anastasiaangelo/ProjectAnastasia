@@ -9,7 +9,7 @@ import time
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/nopenalty-QAOA/7res-2rot.csv"
+file_path = "RESULTS/nopenalty-QAOA/4res-2rot.csv"
 
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -125,6 +125,7 @@ for bitstring in valid_samples:
 
 print("Bitstring with lowest energy:", bitstring_with_lowest_energy)
 print("Ground state energy", lowest_energy + k)
+print("ground state energy without k", lowest_energy)
 
 data = {
     "Experiment": ["Aer Simulation XY QAOA"],

@@ -22,7 +22,7 @@ from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction, change PDB files
 num_res = 2
-num_rot = 3
+num_rot = 4
 pose = pyrosetta.pose_from_pdb(f"input_files/{num_res}residue.pdb")
 
 

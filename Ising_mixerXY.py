@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 num_rot = 2
-file_path = "RESULTS/XY-QAOA/10res-2rot.csv"
+file_path = "RESULTS/XY-QAOA/5res-2rot.csv"
 file_path_depth = "RESULTS/Depths/XY-QAOA/4res-2rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -215,7 +215,7 @@ simulator = Aer.get_backend('qasm_simulator')
 provider = IBMProvider()
 available_backends = provider.backends()
 print("Available Backends:", available_backends)
-device_backend = provider.get_backend('ibm_torino')
+device_backend = provider.get_backend('ibm_sherbrooke')
 noise_model = NoiseModel.from_backend(device_backend)
 
 options= {
@@ -223,7 +223,7 @@ options= {
     "basis_gates": simulator.configuration().basis_gates,
     "coupling_map": simulator.configuration().coupling_map,
     "seed_simulator": 42,
-    "shots": 5000,
+    "shots": 1000,
     "optimization_level": 3,
     "resilience_level": 3
 }
@@ -239,6 +239,8 @@ p = 1
 intermediate_data = []
 initial_point = np.ones(2 * p)
 noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
+
+# insert optimzier 
 
 start_time1 = time.time()
 qaoa1 = QAOA(sampler=noisy_sampler, optimizer=COBYLA(), reps=p, initial_state=qc, mixer=XY_mixer, initial_point=initial_point,callback=callback)
@@ -357,7 +359,8 @@ for bitstring, data in sorted_bitstrings:
             "shots": [options['shots']],
             "Fraction": [fraction_satisfying_hamming],
             # "Iteration Ground State": [ground_state_repetition],
-            "Sorted Bitstrings": [sorted_bitstrings]
+            "Sorted Bitstrings": [sorted_bitstrings],
+            "Total Bitstrings": [total_bitstrings]
         }
         found = True
         break
@@ -374,7 +377,8 @@ if not found:
         "shots": [options['shots']],
         "Fraction": [fraction_satisfying_hamming],
         # "Iteration Ground State": [ground_state_repetition],
-        "Sorted Bitstrings": [sorted_bitstrings]
+        "Sorted Bitstrings": [sorted_bitstrings],
+        "Total Bitstrings": [total_bitstrings]
     }
 
 df = pd.DataFrame(data)
@@ -386,7 +390,7 @@ else:
     # File exists, append without writing the header
     df.to_csv(file_path, mode='a', index=False, header=False)
 
-# %%
+ # %%
 print("\n\nThe result of the noisy quantum optimisation using QAOA is: \n")
 print('best measurement', result1.best_measurement)
 print('Optimal parameters: ', result1.optimal_parameters)

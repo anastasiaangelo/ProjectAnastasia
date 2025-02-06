@@ -9,9 +9,10 @@ import time
 import os
 from copy import deepcopy
 
+num_res = 2
 num_rot = 2
-file_path = "RESULTS/localpenalty-QAOA/7res-2rot.csv"
-file_path_depth = "RESULTS/Depths/localpenalty-QAOA-noopt/15res-2rot.csv"
+file_path = f"RESULTS/localpenalty-QAOA/{num_res}res-{num_rot}rot.csv"
+file_path_depth = f"RESULTS/Depths/localpenalty-QAOA-noopt/{num_res}res-{num_rot}rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")

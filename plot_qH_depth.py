@@ -4,9 +4,11 @@ import matplotlib.pyplot as plt
 # Load both datasets
 depth2_df = pd.read_csv("RESULTS/qH_depth_2rots.csv").rename(columns={"Depth": "Depth_1"})
 depth3_df = pd.read_csv("RESULTS/qH_depth_3rots.csv").rename(columns={"Depth": "Depth_2"})
+depth4_df = pd.read_csv("RESULTS/qH_depth_4rots.csv").rename(columns={"Depth": "Depth_3"})
                                                                
 # Merge on 'Size' column to align data points
 df = pd.merge(depth2_df, depth3_df, on="Size", how="outer")
+df = pd.merge(df, depth4_df, on="Size", how="outer")
 
 # Sort by Size to ensure correct plotting order
 df = df.sort_values(by="Size")
@@ -24,11 +26,11 @@ ax1.tick_params(axis='y', labelcolor='b')
 
 # Create secondary y-axis
 ax2 = ax1.twinx()
-
-# Plot Depth on the second y-axis
 ax2.plot(df["Size"], df["Depth_2"], marker='s', color='r', linestyle='--', label="Depth 3 rots")
 ax2.set_ylabel("Circuit Depth 3 rots", color ='r')
 ax2.tick_params(axis='y', labelcolor='r')
+
+ax1.plot(df["Size"], df["Depth_3"], marker='^', color='g', linestyle='-.', label="Depth 4 rots")
 
 # Title and grid
 plt.title(f"Circuit Depth vs. Size")

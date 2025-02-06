@@ -1,2 +1,2 @@
 Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits
-Aer Simulation XY QAOA,4.092030942440033,01011010,N/A,8
+Aer Simulation XY QAOA,18.94277548789978,01010101101010,N/A,14

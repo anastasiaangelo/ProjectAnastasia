@@ -64,7 +64,7 @@ def add_penalty_term(M, penalty_constant, residue_pairs):
     return M
 
 def generate_pairs(N):
-    pairs = [(i, i+1) for i in range(0, 2*N, 2)]
+    pairs = [(i, i+1) for i in range(0, num_rot*N, num_rot)]
     return pairs
 
 P = 6

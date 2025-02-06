@@ -8,10 +8,13 @@ import pandas as pd
 import time
 from copy import deepcopy
 import os
+import csv
 
+
+num_res = 7
 num_rot = 3
-file_path = "RESULTS/3rot-localpenalty-QAOA/7res-3rot.csv"
-file_path_depth = "RESULTS/Depths/3rot-localpenalty-QAOA-noopt/10res-3rot.csv"
+file_path = f"RESULTS/3rot-localpenalty-QAOA/{num_res}res-{num_rot}rot.csv"
+file_path_depth = f"RESULTS/Depths/3rot-localpenalty-QAOA-noopt/{num_res}res-{num_rot}rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -82,7 +85,7 @@ for i in range(num_qubits):
         if i != j:
             k += 0.5 * 0.25 * Q[i][j]
 
-# %% ############################################ Quantum optimisation ########################################################################
+# %% ############################################ Quantum hamiltonian ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
 from qiskit.quantum_info.operators import Pauli, SparsePauliOp
 from qiskit_algorithms.optimizers import COBYLA
@@ -131,6 +134,166 @@ def format_sparsepauliop(op):
     return '\n'.join(terms)
 
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
+
+# %% ############################################ q hamiltonian depth ########################################################################
+import networkx as nx
+
+file_name = "RESULTS/qH_depth_3rots.csv"
+
+def pauli_shares_qubits(pauli1, pauli2):
+    """
+    Determines if two Pauli-Z strings share any qubits.
+    If two terms share a non-identity 'Z' at the same position, they must be in different layers.
+    """
+    for p1, p2 in zip(pauli1, pauli2):
+        if p1 == 'Z' and p2 == 'Z':
+            return True  # They share a qubit
+    return False  # They can be in the same layer
+
+def compute_commuting_layers(hamiltonian):
+    """
+    Uses graph coloring to compute the exact number of layers for ZZ terms based on qubit overlaps.
+    Separates ZZ interaction layers and single-qubit Z layers for more accurate depth estimation.
+
+    Parameters:
+    - hamiltonian: SparsePauliOp representing the Hamiltonian.
+
+    Returns:
+    - depth_HC: The total depth required for H_C.
+    - num_ZZ_layers: The number of parallelizable ZZ layers.
+    - num_single_Z_layers: The number of single-qubit Z layers.
+    - layer_assignments: Dictionary mapping each term to its assigned layer.
+    """
+    pauli_labels = [pauli.to_label() for pauli in hamiltonian.paulis]
+
+    # Separate ZZ terms and single-qubit Z terms
+    zz_terms = [label for label in pauli_labels if label.count('Z') == 2]  # Two-qubit interactions
+    single_z_terms = [label for label in pauli_labels if label.count('Z') == 1]  # Single-qubit rotations
+
+    # Step 1: Create Conflict Graph (Nodes = ZZ terms, Edges = Shared Qubits)
+    G = nx.Graph()
+    for term in zz_terms:
+        G.add_node(term)  # Each ZZ term is a node
+
+    for i, term1 in enumerate(zz_terms):
+        for j, term2 in enumerate(zz_terms):
+            if i < j and pauli_shares_qubits(term1, term2):
+                G.add_edge(term1, term2)  # Conflict edge (they share a qubit)
+
+    # Step 2: Solve Graph Coloring Problem (to find minimum layers for ZZ terms)
+    coloring = nx.coloring.greedy_color(G, strategy="largest_first")
+
+    # Step 3: Assign ZZ Layers
+    num_ZZ_layers = max(coloring.values()) + 1 if coloring else 0
+    layer_assignments = {term: layer for term, layer in coloring.items()}
+
+    # Step 4: Assign Single-Qubit Z Layers (all single-qubit Z can be parallel in one layer)
+    num_single_Z_layers = 1 if single_z_terms else 0
+    for term in single_z_terms:
+        layer_assignments[term] = num_ZZ_layers  # Put single-qubit Z terms in their own separate layer
+
+    # Compute Corrected Depth: (ZZ layers * 3) + (Single-Z layers * 1)
+    depth_HC = (num_ZZ_layers * 3) + (num_single_Z_layers * 1)
+
+    return depth_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments
+
+def compute_qaoa_depth(hamiltonian):
+    """
+    Computes the estimated depth of the QAOA circuit given a sparse Hamiltonian.
+    Separates ZZ interaction layers and single-qubit Z layers.
+
+    Parameters:
+    - hamiltonian: SparsePauliOp representing H_C.
+
+    Returns:
+    - D_HC: depth of the cost Hamiltonian circuit.
+    - D_QAOA_layer: depth of one full QAOA layer (H_C + H_B).
+    - num_ZZ_layers: Number of ZZ layers.
+    - num_single_Z_layers: Number of single-qubit Z layers.
+    - layer_assignments: Layer mapping for visualization.
+    """
+    # Compute depth of cost Hamiltonian using Graph Coloring for ZZ layers and a separate layer for single-qubit Z terms
+    D_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(hamiltonian)
+
+    # Mixer (X-rotations) has depth 1
+    D_QAOA_layer = D_HC + 1
+
+    return D_HC, D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments
+
+# Run the depth analysis with graph coloring
+D_HC, D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_qaoa_depth(q_hamiltonian)
+
+# Convert to DataFrame for better readability
+layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
+layer_df = layer_df.sort_values(by="Assigned Layer")
+
+size = num_qubits
+depth = D_QAOA_layer
+
+file_exists = os.path.isfile(file_name)
+
+with open(file_name, mode="a", newline="") as file:
+    writer = csv.writer(file)
+
+    # Write the header only if the file is new
+    if not file_exists:
+        writer.writerow(["Size", "Depth"])
+    
+    # Append the new result
+    writer.writerow([size, depth])
+
+# Print results
+print(layer_df.to_string(index=False))  # Display the commuting layers
+print(f"\n Estimated depth of H_C: {depth}")
+print(f" Number of qubits: {size}")
+print(f" Number of ZZ layers: {num_ZZ_layers}")
+print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
+print(f" Estimated depth of one QAOA layer: {D_QAOA_layer}")
+
+ # %% ############################################ q_hamiltonian connectivity ########################################################################
+import networkx as nx
+import matplotlib.pyplot as plt
+from qiskit.quantum_info import SparsePauliOp
+
+def visualize_qubit_interactions(hamiltonian, num_qubits):
+    """
+    Creates a graph visualization of qubit interactions based on ZZ terms in the Hamiltonian.
+
+    Parameters:
+    - hamiltonian: SparsePauliOp representing the Hamiltonian.
+    - num_qubits: Number of qubits in the system.
+
+    Returns:
+    - A plotted graph showing qubit connectivity.
+    """
+    pauli_labels = [pauli.to_label() for pauli in hamiltonian.paulis]
+
+    # Initialize graph
+    G = nx.Graph()
+
+    # Add nodes for qubits
+    G.add_nodes_from(range(num_qubits))
+
+    # Identify ZZ interactions and add edges
+    for label in pauli_labels:
+        if label.count('Z') == 2:  # Identify ZZ terms
+            qubits = [i for i, pauli in enumerate(label) if pauli == 'Z']
+            if len(qubits) == 2:
+                G.add_edge(qubits[0], qubits[1])
+
+    # Plot the graph
+    plt.figure(figsize=(8, 6))
+    pos = nx.spring_layout(G)  # Layout for better visualization
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=500, font_size=10)
+    plt.title("Qubit Interaction Graph from ZZ Terms in Hamiltonian")
+    plt.show()
+
+# Run visualization on your Hamiltonian
+visualize_qubit_interactions(q_hamiltonian, num_qubits)
+
+
+
+# %% ############################################ Quantum optimisation ########################################################################
 
 mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 p = 1  # Number of QAOA layers

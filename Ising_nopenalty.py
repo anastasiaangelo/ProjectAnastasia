@@ -30,19 +30,12 @@ value = df['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
-for i in range(0, num-num_rot):
-    if i%2 == 0:
-        Q[i][i+2] = deepcopy(value[n])
-        Q[i+2][i] = deepcopy(value[n])
-        Q[i][i+3] = deepcopy(value[n+1])
-        Q[i+3][i] = deepcopy(value[n+1])
-        n += num_rot
-    elif i%2 != 0:
-        Q[i][i+1] = deepcopy(value[n])
-        Q[i+1][i] = deepcopy(value[n])
-        Q[i][i+2] = deepcopy(value[n+1])
-        Q[i+2][i] = deepcopy(value[n+1])
-        n += num_rot
+for j in range(0, num-num_rot, num_rot):
+    for i in range(j, j+num_rot):
+        for offset in range(num_rot):
+            Q[i][j+num_rot+offset] = deepcopy(value[n])
+            Q[j+num_rot+offset][i] = deepcopy(value[n])
+            n += 1
 
 print('\nQij values: \n', Q)
 

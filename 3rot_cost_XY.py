@@ -8,10 +8,13 @@ import time
 from copy import deepcopy
 import os
 
-num_rot = 3
-# file_path = "RESULTS/3rot-XY-QAOA-nopostproc/2res-3rot.csv"
-file_path = "RESULTS/hardware/6res-3rot-XY-hw-callback.csv"
-file_path_depth = "RESULTS/Depths/7rot-XY-QAOA-hw/7res-3rot.csv"
+
+num_res = 3
+num_rot = 2
+file_path = f"RESULTS/hardware/{num_res}res-{num_rot}rot-XY-hw-callback.csv"
+file_path_depth = f"RESULTS/Depths/{num_rot}rot-XY-QAOA-hw/{num_res}res-{num_rot}rot.csv"
+# file_path = f"RESULTS/{num_rot}rot-XY-QAOA-nopostproc/{num_res}res-{num_rot}rot.csv"
+
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -27,15 +30,12 @@ value = df['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
-for j in range(0, num-3, num_rot):
+for j in range(0, num-num_rot, num_rot):
     for i in range(j, j+num_rot):
-        Q[i][j+3] = deepcopy(value[n])
-        Q[j+3][i] = deepcopy(value[n])
-        Q[i][j+4] = deepcopy(value[n+1])
-        Q[j+4][i] = deepcopy(value[n+1])
-        Q[i][j+5] = deepcopy(value[n+2])
-        Q[j+5][i] = deepcopy(value[n+2])
-        n += num_rot
+        for offset in range(num_rot):
+            Q[i][j+num_rot+offset] = deepcopy(value[n])
+            Q[j+num_rot+offset][i] = deepcopy(value[n])
+            n += 1
 
 print('\nQij values: \n', Q)
 
@@ -112,7 +112,7 @@ def format_sparsepauliop(op):
 
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
-def create_custom_xy_mixer(num_qubits):
+def create_xy_3mixer(num_qubits):
     hamiltonian = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
     for i in range(0, num_qubits - 2, 3): 
         x1x2 = ['I'] * num_qubits
@@ -145,7 +145,7 @@ def create_custom_xy_mixer(num_qubits):
         hamiltonian += x1x2 + y1y2 + x2x3 + y2y3 + x1x3 + y1y3
     return hamiltonian
 
-XY_mixer = create_custom_xy_mixer(num_qubits)
+XY_mixer = create_xy_3mixer(num_qubits)
 
 def format_sparsepauliop(op):
     terms = []
@@ -201,7 +201,7 @@ simulator = Aer.get_backend('qasm_simulator')
 provider = IBMProvider()
 available_backends = provider.backends()
 print("Available Backends:", available_backends)
-device_backend = provider.get_backend('ibm_torino')
+device_backend = provider.get_backend('ibm_kyiv')
 noise_model = NoiseModel.from_backend(device_backend)
 
 options= {
@@ -214,7 +214,7 @@ options= {
     "resilience_level": 3
 }
 
-def callback(quasi_dists, parameters, energy):
+def callback(quasi_dists, parameters, energy,_):
     intermediate_data.append({
         'quasi_distributions': quasi_dists,
         'parameters': parameters,

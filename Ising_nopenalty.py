@@ -12,8 +12,8 @@ import csv
 import os
 from copy import deepcopy
 
-num_res = 2
-num_rot = 2
+num_res = 4
+num_rot = 4
 file_path = f"RESULTS/nopenalty-QAOA/{num_res}res-{num_rot}rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -228,7 +228,7 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
  # %% ############################################ q_hamiltonian depth ########################################################################
 import networkx as nx
 
-file_name = "RESULTS/qH_depth_2rots.csv"
+file_name = f"RESULTS/qH_depth_{num_rot}rots.csv"
 
 def pauli_shares_qubits(pauli1, pauli2):
     """

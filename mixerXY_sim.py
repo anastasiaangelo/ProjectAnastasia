@@ -8,8 +8,8 @@ import time
 from copy import deepcopy
 import os
 
-num_res = 3
-num_rot = 3
+num_res = 4
+num_rot = 4
 file_path = f"RESULTS/{num_rot}rot-XY-QAOA/{num_res}res-{num_rot}rot.csv"
 # file_path = "RESULTS/hardware/7res-3rot-XY-hw.csv"
 file_path_depth = f"RESULTS/Depths/{num_rot}rot-XY-QAOA-hw/{num_res}res-{num_rot}rot.csv"
@@ -135,6 +135,49 @@ def generate_initial_bitstring(num_qubits, num_rot):
 
     return bitstring
 
+def create_product_state(base_circuit, n):
+    num_qubits = base_circuit.num_qubits
+    product_circuit = QuantumCircuit(num_qubits * n)
+
+    for i in range(n):
+        base_circuit_copy = deepcopy(base_circuit)
+        product_circuit.compose(base_circuit_copy, qubits=range(i * num_qubits, (i + 1) * num_qubits), inplace=True)
+        
+    return product_circuit
+
+def R_gate(theta=np.pi/4):
+    from qiskit.quantum_info import Operator
+    qc = QuantumCircuit(1)
+    qc.ry(theta*np.pi/2, 0)
+    qc.rz(np.pi, 0)
+    op = Operator(qc)
+    return op
+
+def A_gate(theta=np.pi/4):
+    qc = QuantumCircuit(2)
+    qc.cx(1, 0)
+    rgate = R_gate(theta=theta)
+    rgate_adj  = R_gate().adjoint()
+    # apply rgate to qubit 0
+    qc.unitary(rgate_adj, [1], label='R')
+    qc.cx(0, 1)
+    qc.unitary(rgate, [1], label='R')
+    qc.cx(1, 0)
+    return qc
+
+def symmetry_preserving_initial_state(num_res, num_rot, theta=np.pi/4):
+    if num_rot < 2:
+        raise ValueError("num_rot must be at least 2.")
+
+    qc = QuantumCircuit(num_rot)
+    qc.x(num_rot // 2)
+    agate = A_gate(theta=theta)
+
+    for i in range(num_rot - 1):
+        qc.compose(agate, [i, i + 1], inplace=True)
+
+    init_state = create_product_state(qc, num_res)
+    return init_state
 
 def format_sparsepauliop(op):
     terms = []
@@ -143,7 +186,6 @@ def format_sparsepauliop(op):
     for label, coeff in zip(labels, coeffs):
         terms.append(f"{coeff:.10f} * {label}")
     return '\n'.join(terms)
-
 
 
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
@@ -166,13 +208,20 @@ XY_mixer = get_XY_mixer(num_qubits, num_rot)
 print('XY mixer: ', XY_mixer)
 
 p = 1
+mixer_bound = 1.0
+cost_bound = 0.1
+# generate a random vector initial_point of length 2*p, even indices should be drawn from a uniform distribution with bound cost_bound, odd indices should be drawn from a uniform distribution with bound mixer_bound
+init_point_cost = np.random.uniform(-cost_bound, cost_bound, p)
+init_point_mixer = np.random.uniform(-mixer_bound, mixer_bound, p)
 initial_point = np.ones(2 * p)
+initial_point[0::2] = init_point_cost
+initial_point[1::2] = init_point_mixer
+
 initial_bitstring = generate_initial_bitstring(num_qubits, num_rot)
 state_vector = np.zeros(2**num_qubits)
 indexx = int(initial_bitstring, 2)
 state_vector[indexx] = 1
-qc = QuantumCircuit(num_qubits)
-qc.initialize(state_vector, range(num_qubits))
+qc = symmetry_preserving_initial_state(num_res=num_res, num_rot=num_rot, theta=np.pi/4)
 
 # %% ############################################ Local simulation ########################################################################
 
@@ -226,7 +275,6 @@ def callback(quasi_dists, parameters, energy):
 
 p = 1
 intermediate_data = []
-initial_point = np.ones(2 * p)
 noisy_sampler = BackendSampler(backend=simulator, options=options, bound_pass_manager=PassManager())
 
 start_time1 = time.time()
@@ -261,6 +309,7 @@ print('Optimal parameters: ', opt_parameters)
 # %% ############################################ Post Selection ##########################################################################
 from qiskit_aer.primitives import Estimator
 from qiskit import QuantumCircuit, transpile
+import ast
 
 def int_to_bitstring(state, total_bits):
     """Converts an integer state to a binary bitstring with padding of leading zeros."""
@@ -300,12 +349,32 @@ def calculate_bitstring_energy(bitstring, hamiltonian, backend=None):
 
     return resultt.values[0].real
 
+def find_min_energy_and_bitstring_from_exact_energy_dataframe(df_exact, nres, nrot):
+    df_filtered = df_exact[(df_exact['num_res'] == nres) & (df_exact['num_rot'] == nrot)]
+    
+    if len(df_filtered) > 1:
+        raise Exception(f"Multiple rows found for num_res = {nres} and num_rot = {nrot}")
+    
+    energy = ast.literal_eval(df_filtered.iloc[0]['energies'])
+    corresponding_bitstring = ast.literal_eval(df_filtered.iloc[0]['bitstrings'])
+    
+    energy = [complex(e).real for e in energy]
+
+    if isinstance(energy, list):
+        min_index = energy.index(min(energy))
+        
+        energy = energy[min_index]
+        corresponding_bitstring = corresponding_bitstring[min_index]
+    
+    return energy, corresponding_bitstring
+
 
 eigenstate_distribution = result1.eigenstate
 best_measurement = result1.best_measurement
 final_bitstrings = {state: probability for state, probability in eigenstate_distribution.items()}
 
 all_bitstrings = {}
+
 for state, prob in final_bitstrings.items():
     bitstring = int_to_bitstring(state, num_qubits)
     if check_hamming(bitstring, num_rot):
@@ -316,18 +385,45 @@ for state, prob in final_bitstrings.items():
         all_bitstrings[bitstring]['energy'] = (all_bitstrings[bitstring]['energy'] * all_bitstrings[bitstring]['count'] + energy) / (all_bitstrings[bitstring]['count'] + 1)
         all_bitstrings[bitstring]['count'] += 1
 
+
+exact_data = pd.read_csv("input_files/exact_energies_and_bitstrings.csv.gz", compression='gzip')
+df_filtered = exact_data[(exact_data['num_res'] == num_res) & (exact_data['num_rot'] == num_rot)]
+if df_filtered.empty: 
+    raise Exception(f"No matching rows found for num_res = {num_res} and num_rot = {num_rot}")
+
+# Instead of raising an error, select the row with the minimum energy
+df_filtered = df_filtered.sort_values(by='energies').head(1)
+min_energy, corresponding_bitstring = find_min_energy_and_bitstring_from_exact_energy_dataframe(exact_data, num_res, num_rot)
+
+found_min_energy = False
+
 for data in intermediate_data:
     print(f"Quasi Distribution: {data['quasi_distributions']}, Parameters: {data['parameters']}, Energy: {data['energy']}")
+
     for distribution in data['quasi_distributions']:
         for int_bitstring, probability in distribution.items():
             intermediate_bitstring = int_to_bitstring(int_bitstring, num_qubits)
+
             if check_hamming(intermediate_bitstring, num_rot):
                 if intermediate_bitstring not in all_bitstrings:
                     all_bitstrings[intermediate_bitstring] = {'probability': 0, 'energy': 0, 'count': 0}
-                all_bitstrings[intermediate_bitstring]['probability'] += probability  # Aggregate probabilities
+
+                all_bitstrings[intermediate_bitstring]['probability'] += probability  
                 energy = calculate_bitstring_energy(intermediate_bitstring, q_hamiltonian)
-                all_bitstrings[intermediate_bitstring]['energy'] = (all_bitstrings[intermediate_bitstring]['energy'] * all_bitstrings[intermediate_bitstring]['count'] + energy) / (all_bitstrings[intermediate_bitstring]['count'] + 1)
+                count = all_bitstrings[intermediate_bitstring]['count']
+                all_bitstrings[intermediate_bitstring]['energy'] = (all_bitstrings[intermediate_bitstring]['energy'] * count + energy) / (count + 1)
                 all_bitstrings[intermediate_bitstring]['count'] += 1
+
+                if np.isclose(all_bitstrings[intermediate_bitstring]['energy'], min_energy, atol=1e-9): 
+                    print(f"Interrupting at Bitstring: {intermediate_bitstring} with the minimum energy of {min_energy} at iteration {i}")   
+                    found_min_energy = True
+                    break 
+            
+        if found_min_energy:
+            break 
+    
+    if found_min_energy:
+        break 
 
 
 total_probabilities = sum(bitstring_data['probability'] for bitstring_data in all_bitstrings.values())

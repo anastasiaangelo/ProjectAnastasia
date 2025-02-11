@@ -9,7 +9,7 @@ from copy import deepcopy
 import os
 
 num_res = 3
-num_rot = 2
+num_rot = 3
 file_path = f"RESULTS/{num_rot}rot-XY-QAOA/{num_res}res-{num_rot}rot.csv"
 # file_path = "RESULTS/hardware/7res-3rot-XY-hw.csv"
 file_path_depth = f"RESULTS/Depths/{num_rot}rot-XY-QAOA-hw/{num_res}res-{num_rot}rot.csv"
@@ -89,6 +89,63 @@ def generate_pauli_zij(n, i, j):
 
     return Pauli(''.join(pauli_str))
 
+def format_sparsepauliop(op):
+    terms = []
+    labels = [pauli.to_label() for pauli in op.paulis]
+    coeffs = op.coeffs
+    for label, coeff in zip(labels, coeffs):
+        terms.append(f"{coeff:.10f} * {label}")
+    return '\n'.join(terms)
+
+def get_XY_mixer(num_qubits, num_rot, transverse_field=1):
+    if num_rot < 2:
+        raise ValueError("num_rot must be at least 2.")
+
+    hamiltonian = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
+
+    for i in range(0, num_qubits - num_rot + 1, num_rot):  
+        pauli_terms = {'X': [], 'Y': []}
+        
+        # Generate all pairwise (X, X) and (Y, Y) terms in each `num_rot` group
+        for j in range(num_rot):
+            for k in range(j + 1, num_rot):
+                xx_term = ['I'] * num_qubits
+                yy_term = ['I'] * num_qubits
+                xx_term[i + j] = 'X'
+                xx_term[i + k] = 'X'
+                yy_term[i + j] = 'Y'
+                yy_term[i + k] = 'Y'
+
+                xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
+                yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
+
+                hamiltonian += xx_op + yy_op
+
+    hamiltonian *= transverse_field
+    return -hamiltonian if num_rot == 2 else hamiltonian
+
+
+def generate_initial_bitstring(num_qubits, num_rot):
+    if num_rot < 2:
+        raise ValueError("num_rot must be at least 2.")
+
+    pattern = ['0'] * num_rot  
+    pattern[0] = '1'  # Ensure at least one '1' per group
+    bitstring = ''.join(pattern * ((num_qubits // num_rot) + 1))[:num_qubits]
+
+    return bitstring
+
+
+def format_sparsepauliop(op):
+    terms = []
+    labels = [pauli.to_label() for pauli in op.paulis]
+    coeffs = op.coeffs
+    for label, coeff in zip(labels, coeffs):
+        terms.append(f"{coeff:.10f} * {label}")
+    return '\n'.join(terms)
+
+
+
 q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
 
 for i in range(num_qubits):
@@ -103,98 +160,14 @@ for i in range(num_qubits):
     Z_i = SparsePauliOp(pauli, coeffs=[H[i][i]])
     q_hamiltonian += Z_i
 
-def format_sparsepauliop(op):
-    terms = []
-    labels = [pauli.to_label() for pauli in op.paulis]
-    coeffs = op.coeffs
-    for label, coeff in zip(labels, coeffs):
-        terms.append(f"{coeff:.10f} * {label}")
-    return '\n'.join(terms)
-
 print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
-# %% ############################################ XY mixer 2 rots per res ########################################################################
-# XY mixer to implement Hamming condition
-
-def create_xy_2mixer(num_qubits):
-    hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])  
-    for i in range(0, num_qubits, 2):
-        if i + 1 < num_qubits:
-            xx_term = ['I'] * num_qubits
-            yy_term = ['I'] * num_qubits
-            xx_term[i] = 'X'
-            xx_term[i+1] = 'X'
-            yy_term[i] = 'Y'
-            yy_term[i+1] = 'Y'
-            xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
-            yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
-            hamiltonian += xx_op + yy_op
-    return -hamiltonian 
-
-XY_mixer = create_xy_2mixer(num_qubits)
-
-def generate_initial_bitstring(num_qubits):
-    bitstring = [(i%2) for i in range(num_qubits)]
-    return ''.join(map(str, bitstring))
-
-
-# %% ############################################ XY mixer 3 rots per res ########################################################################
-
-def create_xy_3mixer(num_qubits):
-    hamiltonian = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
-    for i in range(0, num_qubits - 2, 3): 
-        x1x2 = ['I'] * num_qubits
-        y1y2 = ['I'] * num_qubits
-        x2x3 = ['I'] * num_qubits
-        y2y3 = ['I'] * num_qubits
-        x1x3 = ['I'] * num_qubits
-        y1y3 = ['I'] * num_qubits
-
-        x1x2[i] = 'X'
-        x1x2[i+1] = 'X'
-        y1y2[i] = 'Y'
-        y1y2[i+1] = 'Y'
-        x2x3[i+1] = 'X'
-        x2x3[i+2] = 'X'
-        y2y3[i+1] = 'Y'
-        y2y3[i+2] = 'Y'
-        x1x3[i] = 'X'
-        x1x3[i+2] = 'X'
-        y1y3[i] = 'Y'
-        y1y3[i+2] = 'Y' 
-
-        x1x2 = SparsePauliOp(Pauli(''.join(x1x2)), coeffs=[1/2])
-        y1y2 = SparsePauliOp(Pauli(''.join(y1y2)), coeffs=[1/2])
-        x2x3 = SparsePauliOp(Pauli(''.join(x2x3)), coeffs=[1/2])
-        y2y3 = SparsePauliOp(Pauli(''.join(y2y3)), coeffs=[1/2])
-        x1x3 = SparsePauliOp(Pauli(''.join(x1x3)), coeffs=[1/2])
-        y1y3 = SparsePauliOp(Pauli(''.join(y1y3)), coeffs=[1/2])
-
-        hamiltonian += x1x2 + y1y2 + x2x3 + y2y3 + x1x3 + y1y3
-    return hamiltonian
-
-XY_mixer = create_xy_3mixer(num_qubits)
-
-def generate_initial_bitstring(num_qubits):
-    pattern = '100'
-    bitstring = (pattern * (num_qubits // 3 + 1))[:num_qubits]
-    return bitstring
-
-# %% ############################################ QAOA preperation ########################################################################
-
-def format_sparsepauliop(op):
-    terms = []
-    labels = [pauli.to_label() for pauli in op.paulis]
-    coeffs = op.coeffs
-    for label, coeff in zip(labels, coeffs):
-        terms.append(f"{coeff:.10f} * {label}")
-    return '\n'.join(terms)
-
+XY_mixer = get_XY_mixer(num_qubits, num_rot)
 print('XY mixer: ', XY_mixer)
 
 p = 1
 initial_point = np.ones(2 * p)
-initial_bitstring = generate_initial_bitstring(num_qubits)
+initial_bitstring = generate_initial_bitstring(num_qubits, num_rot)
 state_vector = np.zeros(2**num_qubits)
 indexx = int(initial_bitstring, 2)
 state_vector[indexx] = 1

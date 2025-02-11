@@ -12,8 +12,8 @@ import csv
 from itertools import combinations
 
 
-num_res = 3
-num_rot = 3
+num_res = 4
+num_rot = 4
 file_path = f"RESULTS/{num_rot}rot-localpenalty-QAOA/{num_res}res-{num_rot}rot.csv"
 file_path_depth = f"RESULTS/Depths/{num_rot}rot-localpenalty-QAOA-noopt/{num_res}res-{num_rot}rot.csv"
 
@@ -136,7 +136,7 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 # %% ############################################ q hamiltonian depth ########################################################################
 import networkx as nx
 
-file_name = f"RESULTS/qH_depth_{num_rot}rots.csv"
+file_name = f"RESULTS/qH_depth_{num_rot}rots_penalties.csv"
 
 def pauli_shares_qubits(pauli1, pauli2):
     """

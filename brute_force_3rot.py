@@ -10,9 +10,10 @@ import time
 from copy import deepcopy
 import sys
 
-num_res = 2
-num_rot = 3
-file_path = f"RESULTS/3rot_nopenalty-QAOA/{num_res}res-{num_rot}rot.csv"
+num_res = 4
+num_rot = 4
+file_path = f"RESULTS/{num_rot}rot-nopenalty-QAOA/{num_res}res-{num_rot}rot.csv"
+
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
 df1 = pd.read_csv("energy_files/one_body_terms.csv")
@@ -28,15 +29,12 @@ value = df['E_ij'].values
 Q = np.zeros((num,num))
 n = 0
 
-for j in range(0, num-3, num_rot):
+for j in range(0, num-num_rot, num_rot):
     for i in range(j, j+num_rot):
-        Q[i][j+3] = deepcopy(value[n])
-        Q[j+3][i] = deepcopy(value[n])
-        Q[i][j+4] = deepcopy(value[n+1])
-        Q[j+4][i] = deepcopy(value[n+1])
-        Q[i][j+5] = deepcopy(value[n+2])
-        Q[j+5][i] = deepcopy(value[n+2])
-        n += num_rot
+        for offset in range(num_rot):
+            Q[i][j+num_rot+offset] = deepcopy(value[n])
+            Q[j+num_rot+offset][i] = deepcopy(value[n])
+            n += 1
 
 print('\nQij values: \n', Q)
 

@@ -63,7 +63,7 @@ ax.scatter(df["Size"], df["Depth"], color='b', edgecolors='black', zorder=3, lab
 # Labels and title
 ax.set_xlabel("Circuit Size")
 ax.set_ylabel("Circuit Depth")
-ax.set_title("Circuit Depth vs. Size")
+ax.set_title("Circuit Depth with Penalties vs. Size")
 
 # Grid and legend
 ax.grid(True, linestyle='--', alpha=0.6)

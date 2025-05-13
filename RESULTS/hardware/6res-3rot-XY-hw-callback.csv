@@ -1,0 +1,2 @@
+Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits,shots
+Aer Simulation XY QAOA no Post Processing,0.0,"{'state': 0, 'bitstring': '000000', 'value': (-4.856321930885315+0j), 'probability': 0.001}",15.572593927383423,6,8000

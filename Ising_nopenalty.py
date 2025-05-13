@@ -12,8 +12,8 @@ import csv
 import os
 from copy import deepcopy
 
-num_res = 6
-num_rot = 7
+num_res = 4
+num_rot = 2
 file_path = f"RESULTS/nopenalty-QAOA/{num_res}res-{num_rot}rot.csv"
 
 ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
@@ -50,7 +50,6 @@ for i in range(num):
     H[i][i] = -(0.5 * q[i] + sum(0.25 * Q[i][j] for j in range(num) if j != i))
 
 print('\nH: \n', H)
-
 # %% Brute force
 import itertools
 from qiskit.quantum_info import Statevector, Operator
@@ -134,46 +133,46 @@ data = {
 df = pd.DataFrame(data)
 df.to_csv(file_path, index=False)
 
-# # %% ################################################ Classical optimisation ###########################################################
-# from scipy.sparse.linalg import eigsh
+# %% ################################################ Classical optimisation ###########################################################
+from scipy.sparse.linalg import eigsh
 
-# Z_matrix = np.array([[1, 0], [0, -1]])
-# identity = np.eye(2)
+Z_matrix = np.array([[1, 0], [0, -1]])
+identity = np.eye(2)
 
-# def construct_operator(qubit_indices, num_qubits):
-#     operator = np.eye(1)
-#     for qubit in range(num_qubits):
-#         if qubit in qubit_indices:
-#             operator = np.kron(operator, Z_matrix)
-#         else:
-#             operator = np.kron(operator, identity)
-#     return operator
+def construct_operator(qubit_indices, num_qubits):
+    operator = np.eye(1)
+    for qubit in range(num_qubits):
+        if qubit in qubit_indices:
+            operator = np.kron(operator, Z_matrix)
+        else:
+            operator = np.kron(operator, identity)
+    return operator
 
-# C = np.zeros((2**num_qubits, 2**num_qubits))
+C = np.zeros((2**num_qubits, 2**num_qubits))
 
-# for i in range(num_qubits):
-#     operator = construct_operator([i], num_qubits)
-#     C += H[i][i] * operator
+for i in range(num_qubits):
+    operator = construct_operator([i], num_qubits)
+    C += H[i][i] * operator
 
-# for i in range(num_qubits):
-#     for j in range(i+1, num_qubits):
-#         operator = construct_operator([i, j], num_qubits)
-#         C += H[i][j] * operator
+for i in range(num_qubits):
+    for j in range(i+1, num_qubits):
+        operator = construct_operator([i, j], num_qubits)
+        C += H[i][j] * operator
 
-# print('C :\n', C)
+print('C :\n', C)
 
-# # Extract the ground state energy and wavefunction
-# # using sparse representation so as to be able to generalise to larger systems
-# eigenvalues, eigenvectors = eigsh(C, k=num, which='SA')
-# print("\n\nClassical optimisation results. \n")
-# print("Ground energy eigsh: ", eigenvalues[0])
-# print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
-# print('\n\n')
+# Extract the ground state energy and wavefunction
+# using sparse representation so as to be able to generalise to larger systems
+eigenvalues, eigenvectors = eigsh(C, k=num, which='SA')
+print("\n\nClassical optimisation results. \n")
+print("Ground energy eigsh: ", eigenvalues[0])
+print("ground state wavefuncion eigsh: ", eigenvectors[:,0])
+print('\n\n')
 
-# with open(file_path, "a") as file:
-#     file.write("\n\nClassical optimisation results.\n")
-#     file.write(f"Ground energy eigsh: {eigenvalues[0]}\n")
-#     file.write(f"Ground state wavefunction eigsh: {eigenvectors[:,0]}\n")
+with open(file_path, "a") as file:
+    file.write("\n\nClassical optimisation results.\n")
+    file.write(f"Ground energy eigsh: {eigenvalues[0]}\n")
+    file.write(f"Ground state wavefunction eigsh: {eigenvectors[:,0]}\n")
 
  # %% ############################################ Quantum hamiltonian ########################################################################
 from qiskit_algorithms.minimum_eigensolvers import QAOA
@@ -227,18 +226,34 @@ print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_spar
 
  # %% ############################################ q_hamiltonian depth ########################################################################
 import networkx as nx
+def create_xy_hamiltonian(num_qubits):
+    hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])  
+    for i in range(0, num_qubits, 2):
+        if i + 1 < num_qubits:
+            xx_term = ['I'] * num_qubits
+            yy_term = ['I'] * num_qubits
+            xx_term[i] = 'X'
+            xx_term[i+1] = 'X'
+            yy_term[i] = 'Y'
+            yy_term[i+1] = 'Y'
+            xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
+            yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
+            hamiltonian += xx_op + yy_op
+    return -hamiltonian 
 
-file_name = f"RESULTS/qH_depth_{num_rot}rots_nopenalty.csv"
+XY_mixer = create_xy_hamiltonian(num_qubits)
+
+file_name = f"RESULTS/qH_depths/total_depth_{num_rot}rots_nopenalty.csv"
 
 def pauli_shares_qubits(pauli1, pauli2):
     """
-    Determines if two Pauli-Z strings share any qubits.
-    If two terms share a non-identity 'Z' at the same position, they must be in different layers.
+    Returns True if the two Pauli strings share any qubit with non-identity ops.
     """
     for p1, p2 in zip(pauli1, pauli2):
-        if p1 == 'Z' and p2 == 'Z':
-            return True  # They share a qubit
-    return False  # They can be in the same layer
+        if p1 != 'I' and p2 != 'I':
+            return True
+    return False
+
 
 def compute_commuting_layers(hamiltonian):
     """
@@ -257,16 +272,16 @@ def compute_commuting_layers(hamiltonian):
     pauli_labels = [pauli.to_label() for pauli in hamiltonian.paulis]
 
     # Separate ZZ terms and single-qubit Z terms
-    zz_terms = [label for label in pauli_labels if label.count('Z') == 2]  # Two-qubit interactions
+    two_qubit_terms = [label for label in pauli_labels if sum(p != 'I' for p in label) == 2]
     single_z_terms = [label for label in pauli_labels if label.count('Z') == 1]  # Single-qubit rotations
 
     # Step 1: Create Conflict Graph (Nodes = ZZ terms, Edges = Shared Qubits)
     G = nx.Graph()
-    for term in zz_terms:
+    for term in two_qubit_terms:
         G.add_node(term)  # Each ZZ term is a node
 
-    for i, term1 in enumerate(zz_terms):
-        for j, term2 in enumerate(zz_terms):
+    for i, term1 in enumerate(two_qubit_terms):
+        for j, term2 in enumerate(two_qubit_terms):
             if i < j and pauli_shares_qubits(term1, term2):
                 G.add_edge(term1, term2)  # Conflict edge (they share a qubit)
 
@@ -287,33 +302,52 @@ def compute_commuting_layers(hamiltonian):
 
     return depth_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments
 
-def compute_qaoa_depth(hamiltonian):
+def compute_qaoa_depth(cost_hamiltonian, mixer_hamiltonian=None, mixer_type="X"):
     """
-    Computes the estimated depth of the QAOA circuit given a sparse Hamiltonian.
-    Separates ZZ interaction layers and single-qubit Z layers.
+    Computes the estimated depth of a full QAOA layer.
 
     Parameters:
-    - hamiltonian: SparsePauliOp representing H_C.
+    - cost_hamiltonian: SparsePauliOp for H_C.
+    - mixer_hamiltonian: SparsePauliOp for H_B (if XY).
+    - mixer_type: "X" or "XY".
 
     Returns:
     - D_HC: depth of the cost Hamiltonian circuit.
-    - D_QAOA_layer: depth of one full QAOA layer (H_C + H_B).
-    - num_ZZ_layers: Number of ZZ layers.
-    - num_single_Z_layers: Number of single-qubit Z layers.
-    - layer_assignments: Layer mapping for visualization.
+    - D_QAOA_layer: total depth of one QAOA layer.
+    - details: dictionary with breakdown of depths and layers.
     """
-    # Compute depth of cost Hamiltonian using Graph Coloring for ZZ layers and a separate layer for single-qubit Z terms
-    D_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(hamiltonian)
 
-    # Mixer (X-rotations) has depth 1
-    D_QAOA_layer = D_HC + 1
+    # Cost Hamiltonian depth
+    D_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(cost_hamiltonian)
 
-    return D_HC, D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments
+    if mixer_type == "X":
+        D_HB = 1
+        num_mixer_layers = 1
+    elif mixer_type == "XY":
+        if mixer_hamiltonian is None:
+            raise ValueError("XY mixer selected but no mixer Hamiltonian provided.")
+        D_HB, num_XY_layers, _, _ = compute_commuting_layers(mixer_hamiltonian)
+        num_mixer_layers = num_XY_layers
+    else:
+        raise ValueError("Unknown mixer type.")
 
-# Run the depth analysis with graph coloring
-D_HC, D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_qaoa_depth(q_hamiltonian)
+    D_QAOA_layer = D_HC + D_HB
 
-# Convert to DataFrame for better readability
+    details = {
+        "D_HC": D_HC,
+        "D_HB": D_HB,
+        "D_QAOA_layer": D_QAOA_layer,
+        "num_ZZ_layers": num_ZZ_layers,
+        "num_single_Z_layers": num_single_Z_layers,
+        "num_mixer_layers": num_mixer_layers,
+        "mixer_type": mixer_type,
+    }
+
+    return D_HC, D_QAOA_layer, layer_assignments, details
+
+
+D_HC, D_QAOA_layer, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, XY_mixer, "XY")
+
 layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
 layer_df = layer_df.sort_values(by="Assigned Layer")
 
@@ -325,20 +359,17 @@ file_exists = os.path.isfile(file_name)
 with open(file_name, mode="a", newline="") as file:
     writer = csv.writer(file)
 
-    # Write the header only if the file is new
     if not file_exists:
         writer.writerow(["Size", "Depth"])
     
-    # Append the new result
     writer.writerow([size, depth])
     file.flush()
 
-# Print results
-print(layer_df.to_string(index=False))  # Display the commuting layers
+print(layer_df.to_string(index=False))  
 print(f"\n Estimated depth of H_C: {depth}")
 print(f" Number of qubits: {size}")
-print(f" Number of ZZ layers: {num_ZZ_layers}")
-print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
+# print(f" Number of ZZ layers: {num_ZZ_layers}")
+# print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
 print(f" Estimated depth of one QAOA layer: {D_QAOA_layer}")
 
  # %% ############################################ q_hamiltonian connectivity ########################################################################
@@ -383,28 +414,28 @@ def visualize_qubit_interactions(hamiltonian, num_qubits):
 visualize_qubit_interactions(q_hamiltonian, num_qubits)
 
 
-# # %% ############################################ Quantum optimisation ########################################################################
+# %% ############################################ Quantum optimisation ########################################################################
 
-# #the mixer in QAOA should be a quantum operator representing transitions between configurations
-# mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-# p = 1  # Number of QAOA layers
-# initial_point = np.ones(2 * p)
-# # %%
-# start_time = time.time()
-# qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
-# result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
-# end_time = time.time()
+#the mixer in QAOA should be a quantum operator representing transitions between configurations
+mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
+p = 1  # Number of QAOA layers
+initial_point = np.ones(2 * p)
+# %%
+start_time = time.time()
+qaoa = QAOA(sampler=Sampler(), optimizer=COBYLA(), reps=p, mixer=mixer_op, initial_point=initial_point)
+result = qaoa.compute_minimum_eigenvalue(q_hamiltonian)
+end_time = time.time()
 
-# print("\n\nThe result of the quantum optimisation using QAOA is: \n")
-# print('best measurement', result.best_measurement)
-# elapsed_time = end_time - start_time
-# print(f"Local Simulation run time: {elapsed_time} seconds")
-# print('\n\n')
+print("\n\nThe result of the quantum optimisation using QAOA is: \n")
+print('best measurement', result.best_measurement)
+elapsed_time = end_time - start_time
+print(f"Local Simulation run time: {elapsed_time} seconds")
+print('\n\n')
 
-# with open(file_path, "a") as file:
-#     file.write("\n\nThe result of the quantum optimisation using QAOA is: \n")
-#     file.write(f"'best measurement' {result.best_measurement}\n")
-#     file.write(f"Local Simulation run time: {elapsed_time} seconds\n")
+with open(file_path, "a") as file:
+    file.write("\n\nThe result of the quantum optimisation using QAOA is: \n")
+    file.write(f"'best measurement' {result.best_measurement}\n")
+    file.write(f"Local Simulation run time: {elapsed_time} seconds\n")
 
 # # %% ############################################ Simulators ##########################################################################
 # from qiskit_aer import Aer

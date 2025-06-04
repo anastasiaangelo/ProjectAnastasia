@@ -21,8 +21,8 @@ from pyrosetta.rosetta.core.pack.task import *
 from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction, change PDB files
-num_res = [6,7,8]
-num_rot = range(2,8)
+num_res = range(8, 10)
+num_rot = range(6, 7)
 
 for res in num_res:
     for rot in num_rot:
@@ -158,14 +158,12 @@ for res in num_res:
 
         import numpy as np
         import pandas as pd
-        import time
         import csv
         import os
         from copy import deepcopy
 
-        file_path = f"RESULTS/nopenalty-QAOA/{res}res-{rot}rot.csv"
 
-        ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
+#         ########################### Configure the hamiltonian from the values calculated classically with pyrosetta ############################
         df1 = pd.read_csv("energy_files/one_body_terms.csv")
         q = df1['E_ii'].values
         num = len(q)
@@ -266,9 +264,9 @@ for res in num_res:
 
         XY_mixer = create_xy_hamiltonian(num_qubits)
 
-################################## no penalty depth ##############################
-        # file_name = f"RESULTS/qH_depths/total_depth_{rot}rots_nopenalty.csv"
-        file_name = f"RESULTS/qH_depths/qH_depth_{rot}rots_nopenalty.csv"
+# ################################## no penalty depth ##############################
+        file_name = f"RESULTS/qH_depths/total_cnots_{rot}rots_nopenalty.csv"
+        # file_name = f"RESULTS/qH_depths/qH_depth_{rot}rots_nopenalty.csv"
 
         def pauli_shares_qubits(pauli1, pauli2):
             """
@@ -289,7 +287,7 @@ for res in num_res:
             - hamiltonian: SparsePauliOp representing the Hamiltonian.
 
             Returns:
-            - depth_HC: The total depth required for H_C.
+            - depth_HC: The total depth required for compiled H_C.
             - num_ZZ_layers: The number of parallelizable ZZ layers.
             - num_single_Z_layers: The number of single-qubit Z layers.
             - layer_assignments: Dictionary mapping each term to its assigned layer.
@@ -323,7 +321,8 @@ for res in num_res:
                 layer_assignments[term] = num_ZZ_layers  # Put single-qubit Z terms in their own separate layer
 
             # Compute Corrected Depth: (ZZ layers * 3) + (Single-Z layers * 1)
-            depth_HC = (num_ZZ_layers * 3) + (num_single_Z_layers * 1)
+            # depth_HC = (num_ZZ_layers * 3) + (num_single_Z_layers * 1)
+            depth_HC = (num_ZZ_layers * 3) 
 
             return depth_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments
 
@@ -337,10 +336,25 @@ for res in num_res:
             - mixer_type: "X" or "XY".
 
             Returns:
-            - D_HC: depth of the cost Hamiltonian circuit.
+            - D_HC: depth of the cost Hamiltonian circuit (compiled).
             - D_QAOA_layer: total depth of one QAOA layer.
             - details: dictionary with breakdown of depths and layers.
             """
+
+            # Count CNOTs from two-qubit ZZ terms (each one contributes 2 CNOTs)
+            pauli_labels = [pauli.to_label() for pauli in cost_hamiltonian.paulis]
+            two_qubit_terms = [label for label in pauli_labels if label.count('Z') == 2 and label.count('I') == len(label) - 2]
+            num_cnot_cost = 2 * len(two_qubit_terms)
+
+            # CNOTs from XY mixer if used
+            num_cnot_mixer = 0
+            if mixer_type == "XY" and mixer_hamiltonian is not None:
+                mixer_labels = [pauli.to_label() for pauli in mixer_hamiltonian.paulis]
+                two_qubit_mixer_terms = [label for label in mixer_labels if sum(p != 'I' for p in label) == 2]
+                num_cnot_mixer = 2 * len(two_qubit_mixer_terms)  # assuming similar CX-RZ-CX or equivalent
+
+            # Total CNOTs per QAOA layer
+            total_cnot = num_cnot_cost + num_cnot_mixer
 
             # Cost Hamiltonian depth
             D_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(cost_hamiltonian)
@@ -356,7 +370,7 @@ for res in num_res:
             else:
                 raise ValueError("Unknown mixer type.")
 
-            D_QAOA_layer = D_HC + D_HB
+            D_QAOA_layer = num_ZZ_layers + num_mixer_layers
 
             details = {
                 "D_HC": D_HC,
@@ -366,13 +380,14 @@ for res in num_res:
                 "num_single_Z_layers": num_single_Z_layers,
                 "num_mixer_layers": num_mixer_layers,
                 "mixer_type": mixer_type,
+                "CNOTs": total_cnot
             }
 
-            return D_HC, D_QAOA_layer, layer_assignments, details
+            return D_HC, D_QAOA_layer, total_cnot, layer_assignments, details
 
 
-        # D_HC, D_QAOA_layer, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, XY_mixer, "XY")
-        D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian)
+        D_HC, D_QAOA_layer, total_cnot, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, XY_mixer, "XY")
+        # D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian)
 
         layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
         layer_df = layer_df.sort_values(by="Assigned Layer")
@@ -386,9 +401,9 @@ for res in num_res:
             writer = csv.writer(file)
 
             if not file_exists:
-                writer.writerow(["Size", "Depth"])
+                writer.writerow(["Size", "CNOTs"])
             
-            writer.writerow([size, depth])
+            writer.writerow([size, total_cnot])
             file.flush()
 
         print(layer_df.to_string(index=False))  
@@ -397,7 +412,7 @@ for res in num_res:
         # print(f" Number of ZZ layers: {num_ZZ_layers}")
         # print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
         print(f" Estimated depth of one QAOA layer: {D_QAOA_layer}")
-        ########################### PENALTY ############################
+#         ########################### PENALTY ############################
 
         from itertools import combinations
 
@@ -515,17 +530,17 @@ for res in num_res:
                 terms.append(f"{coeff:.10f} * {label}")
             return '\n'.join(terms)
 
-        print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
+        # print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
 
         mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
 
-        # file_name = f"RESULTS/qH_depths/total_depth_{rot}rots_penalties.csv"
-        file_name = f"RESULTS/qH_depths/qH_depth_{rot}rots_penalties.csv"
+        file_name = f"RESULTS/qH_depths/total_cnots_{rot}rots_penalties.csv"
+        # file_name = f"RESULTS/qH_depths/qH_depth_{rot}rots_penalties.csv"
 
         # Run the depth analysis with graph coloring
-        # D_HC, D_QAOA_layer, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, mixer_op, "X")
-        D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian)
+        D_HC, D_QAOA_layer, total_cnot, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, mixer_op, "X")
+        # D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian)
 
         # Convert to DataFrame for better readability
         layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
@@ -541,10 +556,10 @@ for res in num_res:
 
             # Write the header only if the file is new
             if not file_exists:
-                writer.writerow(["Size", "Depth"])
+                writer.writerow(["Size", "CNOTs"])
             
             # Append the new result
-            writer.writerow([size, depth])
+            writer.writerow([size, total_cnot])
 
         # Print results
         print(layer_df.to_string(index=False))  # Display the commuting layers
@@ -553,3 +568,155 @@ for res in num_res:
         # print(f" Number of ZZ layers: {num_ZZ_layers}")
         # print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
         print(f" Estimated depth of one QAOA layer: {D_QAOA_layer}")
+
+
+        ########################### BASELINE ############################
+
+        from itertools import combinations
+
+
+        df1 = pd.read_csv("energy_files/one_body_terms.csv")
+        q = df1['E_ii'].values
+        num = len(q)
+        N = int(num/rot)
+        num_qubits = num
+
+        print('Qii values: \n', q)
+
+        df2 = pd.read_csv("energy_files/two_body_terms.csv")
+        value = df2['E_ij'].values
+        Q = np.zeros((num,num))
+        n = 0
+
+        for j in range(0, num-rot, rot):
+            for i in range(j, j+rot):
+                for offset in range(rot):
+                    Q[i][j+rot+offset] = deepcopy(value[n])
+                    Q[j+rot+offset][i] = deepcopy(value[n])
+                    n += 1
+
+        print('\nQij values: \n', Q)
+
+        H = np.zeros((num,num))
+
+        for i in range(num):
+            for j in range(num):
+                if i != j:
+                    H[i][j] = np.multiply(0.25, Q[i][j])
+
+        for i in range(num):
+            H[i][i] = -(0.5 * q[i] + sum(0.25 * Q[i][j] for j in range(num) if j != i))
+
+        print('\nH: \n', H)
+
+
+        from qiskit.quantum_info.operators import Pauli, SparsePauliOp
+
+        def X_op(i, num_qubits):
+            """Return an X Pauli operator on the specified qubit in a num-qubit system."""
+            op_list = ['I'] * num_qubits
+            op_list[i] = 'X'
+            return SparsePauliOp(Pauli(''.join(op_list)))
+
+        def generate_pauli_zij(n, i, j):
+            if i<0 or i >= n or j<0 or j>=n:
+                raise ValueError(f"Indices out of bounds for n={n} qubits. ")
+                
+            pauli_str = ['I']*n
+
+            if i == j:
+                pauli_str[i] = 'Z'
+            else:
+                pauli_str[i] = 'Z'
+                pauli_str[j] = 'Z'
+
+            return Pauli(''.join(pauli_str))
+
+        q_hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])
+
+        for i in range(num_qubits):
+            for j in range(i+1, num_qubits):
+                if H[i][j] != 0:
+                    pauli = generate_pauli_zij(num_qubits, i, j)
+                    op = SparsePauliOp(pauli, coeffs=[H[i][j]])
+                    q_hamiltonian += op
+
+        for i in range(num_qubits):
+            pauli = generate_pauli_zij(num_qubits, i, i)
+            Z_i = SparsePauliOp(pauli, coeffs=[H[i][i]])
+            q_hamiltonian += Z_i
+
+        def format_sparsepauliop(op):
+            terms = []
+            labels = [pauli.to_label() for pauli in op.paulis]
+            coeffs = op.coeffs
+            for label, coeff in zip(labels, coeffs):
+                terms.append(f"{coeff:.10f} * {label}")
+            return '\n'.join(terms)
+
+        print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
+
+
+        mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
+
+        file_name = f"RESULTS/qH_depths/total_cnots_{rot}rots_baseline.csv"
+        # file_name = f"RESULTS/qH_depths/qH_depth_{rot}rots_baseline.csv"
+
+        # Run the depth analysis with graph coloring
+        D_HC, D_QAOA_layer, total_cnot, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, mixer_op, "X")
+        # D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian)
+
+        # Convert to DataFrame for better readability
+        layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
+        layer_df = layer_df.sort_values(by="Assigned Layer")
+
+        size = num_qubits
+        depth = D_QAOA_layer
+
+        file_exists = os.path.isfile(file_name)
+
+        with open(file_name, mode="a", newline="") as file:
+            writer = csv.writer(file)
+
+            # Write the header only if the file is new
+            if not file_exists:
+                writer.writerow(["Size", "CNOTs"])
+            
+            # Append the new result
+            writer.writerow([size, total_cnot])
+
+        # Print results
+        print(layer_df.to_string(index=False))  # Display the commuting layers
+        print(f"\n Estimated depth of H_C: {depth}")
+        print(f" Number of qubits: {size}")
+        # print(f" Number of ZZ layers: {num_ZZ_layers}")
+        # print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
+        print(f" Estimated depth of one QAOA layer: {D_QAOA_layer}")
+
+
+        def count_cnot_in_initial_state(res, rot):
+            cnot_per_agate = 3
+            agates_per_residue = rot - 1
+            total_cnots = res * agates_per_residue * cnot_per_agate
+            return total_cnots
+
+        # Test for several system sizes
+
+        file_name_init = f"RESULTS/qH_depths/total_cnots_{rot}rots_state_prep.csv"
+
+        total_cnots = count_cnot_in_initial_state(res, rot)
+        num_qubits = res * rot
+        print(f"🧬 System: {num_qubits} qubits ({res} res, {rot} rot) → CNOTs: {total_cnots}")
+
+        file_exists = os.path.isfile(file_name_init)
+
+
+        with open(file_name_init, mode="a", newline="") as file:
+            writer = csv.writer(file)
+
+            # Write the header only if the file is new
+            if not file_exists:
+                writer.writerow(["Size", "CNOTs"])
+            
+            # Append the new result
+            writer.writerow([size, total_cnots])

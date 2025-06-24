@@ -4,6 +4,8 @@
 *.mol
 *.params
 venv/
+pf_1_venv/
+transpile_venv/
 lib/
 PyRosetta4.Release.python310.mac.release-382
 student-notebooks

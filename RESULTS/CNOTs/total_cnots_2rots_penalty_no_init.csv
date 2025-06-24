@@ -1,4 +1,4 @@
-Size,Total Gates,Depth,CNOTs
+Size,Total Gates,Depth,CNOTs,Depth before transpilation
 4,69,36,27
 6,120,60,55
 8,180,91,92
@@ -14,4 +14,4 @@ Size,Total Gates,Depth,CNOTs
 26,822,374,527
 28,945,413,627
 30,1002,441,661
-30,1086,479,745
+

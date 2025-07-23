@@ -1,3 +1,4 @@
+# %%
 import pyrosetta
 pyrosetta.init()
 
@@ -28,7 +29,7 @@ def memory_monitor(interval=1):
         time.sleep(interval)
 
 # Start the monitor before your heavy code
-threading.Thread(target=memory_monitor, daemon=True).start()
+# threading.Thread(target=memory_monitor, daemon=True).start()
 
 
 
@@ -36,7 +37,7 @@ threading.Thread(target=memory_monitor, daemon=True).start()
 # num_res = range(7, 8)
 # num_rot = range(7, 8)
 
-for n in range(2, 8):  # from 2 to 7 inclusive
+for n in range(3, 4):  # from 2 to 7 inclusive
     res = n
     rot = n
 
@@ -330,8 +331,8 @@ for n in range(2, 8):  # from 2 to 7 inclusive
     from qiskit_ibm_runtime import QiskitRuntimeService
 
     # file_path_depth = f"RESULTS/CNOTs/total_cnots_{rot}rots_XY_no_init.csv"
-    # file_path_depth = f"RESULTS/CNOTs/total_cnots_{rot}rots_XY.csv"
-    file_path_depth = f"RESULTS/CNOTs/total_cnots_{rot}rots_XY_opt.csv"
+    # file_path_depth = f"RESULTS/CNOTs/cnots_{rot}rots_XY.csv"
+    file_path_depth = f"RESULTS/CNOTs/cnots_{rot}rots_XY_opt.csv"
 
     ansatz = QAOAAnsatz(q_hamiltonian, mixer_operator=XY_mixer, reps=p)
     print('\n\nQAOAAnsatz: ', ansatz)
@@ -340,10 +341,10 @@ for n in range(2, 8):  # from 2 to 7 inclusive
 
     qr = QuantumRegister(num_qubits, 'q')
     trivial_layout = Layout({qr[i]: i for i in range(num_qubits)})
-
-    routing_method = 'sabre'
+# %%
+    routing_method = 'stochastic'
     optimization_level = 3
-    layout_method = 'dense'
+    layout_method = 'trivial'
 
     # routing_method = None
     # optimization_level = 0
@@ -363,9 +364,9 @@ for n in range(2, 8):  # from 2 to 7 inclusive
 
     # Transpile hamiltonian and initial state
     full_circuit_isa = transpile(full_circuit, backend=None, initial_layout=trivial_layout,
-                                coupling_map=torino_coupling_map, basis_gates=['cz', 'rz', 'rzz', 'rx', 'id', 'x', 'sx'], 
+                                coupling_map=torino_coupling_map, basis_gates=['cx', 'rz', 'rx', 'id', 'x', 'sx'], 
                                 optimization_level=optimization_level, layout_method=layout_method, routing_method=routing_method)
-
+    
     print("\n\nAnsatz layout after explicit transpilation:", full_circuit_isa._layout)
 
     op_counts = full_circuit_isa.count_ops()
@@ -377,37 +378,57 @@ for n in range(2, 8):  # from 2 to 7 inclusive
     two_qubit_depth = full_circuit_isa.depth(
         filter_function=lambda instr: len(instr.qubits) == 2
     )
+    cnots = op_counts.get('cx', 0)
+    cnot_depth = full_circuit_isa.depth(
+    filter_function=lambda instr: instr.operation.name == 'cx')
 
     depth = full_circuit_isa.depth()
     print("Operation counts:", op_counts)
-    print("Total number of gates:", total_gates)
-    print("Depth of the circuit: ", depth)
+    print("Total number of 2Q gates:", total_two_qubit_gates)
+    print("CNOTS:", cnots)
+    print("CNOT Depth of the circuit:", cnot_depth)
+    print("2Q Depth of the circuit: ", two_qubit_depth)
 
+
+# %%
     data_depth = {
         "Experiment": ["Hardware XY-QAOA"],
-        "Total number of gates": [total_gates],
-        "Depth of the circuit": [depth],
-        "CZs": [total_two_qubit_gates]
+        "CNOTs": [cnots],
+        "CNOT Depth": [cnot_depth]
     }
 
     df_depth = pd.DataFrame(data_depth)
 
     file_exists = os.path.isfile(file_path_depth) and os.path.getsize(file_path_depth) > 0
 
-    with open(file_path_depth, mode="a", newline="") as file:
-        writer = csv.writer(file)
+    # with open(file_path_depth, mode="a", newline="") as file:
+    #     writer = csv.writer(file)
 
-        # Write the header only if the file is new
-        if not file_exists:
-            writer.writerow(["Size", "Depth", "Two-Qubit Gates", "two_qubit Depth", "Total Gates"])
+    #     # Write the header only if the file is new
+    #     if not file_exists:
+    #         writer.writerow(["Size", "CNOTs", "cnot Depth"])
         
-        # Append the new result
-        writer.writerow([num_qubits, depth, total_two_qubit_gates, two_qubit_depth, total_gates])
+    #     # Append the new result
+    #     writer.writerow([num_qubits, cnots, cnot_depth])
 
+
+    try:
+        with open(file_path_depth, 'x', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Size", "CNOTs", "cnot Depth"])
+    except FileExistsError:
+        pass  # File already exists, don't overwrite header
+
+    # Append data
+    with open(file_path_depth, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([num_qubits, cnots, cnot_depth])
+
+# %%
     ###################################### Baseline ######################################
     # file_name_baseline = f"RESULTS/CNOTs/total_cnots_{rot}rots_baseline_no_init.csv"
-    # file_name_baseline = f"RESULTS/CNOTs/total_cnots_{rot}rots_baseline.csv"
-    file_name_baseline = f"RESULTS/CNOTs/total_cnots_{rot}rots_baseline_opt.csv"
+    # file_name_baseline = f"RESULTS/CNOTs/cnots_{rot}rots_baseline.csv"
+    file_name_baseline = f"RESULTS/CNOTs/cnots_{rot}rots_baseline_opt.csv"
 
     mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
     
@@ -426,12 +447,12 @@ for n in range(2, 8):  # from 2 to 7 inclusive
     full_circuit_bl = qc_bl_init.compose(ansatz_baseline, front=False)
 
     with open(f"full_circuit_bl_opt_{num_qubits}_qubits.qpy", "wb") as f:
-        qpy.dump(full_circuit, f)
+        qpy.dump(full_circuit_bl, f)
 
     # trivial_layout = Layout({qubit: i for i, qubit in enumerate(full_circuit_bl.qubits)})  
 
     full_circuit_bl_isa = transpile(full_circuit_bl, backend=None, initial_layout=trivial_layout,
-                                coupling_map=torino_coupling_map, basis_gates=['cz', 'rz', 'rzz', 'rx', 'id', 'x', 'sx'], 
+                                coupling_map=torino_coupling_map, basis_gates=['cx', 'rz', 'rx', 'id', 'x', 'sx'], 
                                 optimization_level=optimization_level, layout_method=layout_method, routing_method=routing_method)
 
     print("\n\nAnsatz layout after explicit transpilation:", full_circuit_bl_isa._layout)
@@ -446,8 +467,14 @@ for n in range(2, 8):  # from 2 to 7 inclusive
         filter_function=lambda instr: len(instr.qubits) == 2
     )
 
+    cnots = op_counts.get('cx', 0)
+    cnot_depth = full_circuit_bl_isa.depth(
+    filter_function=lambda instr: instr.operation.name == 'cx')
+
     print("Operation counts:", op_counts)
     print("Total number of gates:", total_gates)
+    print("CNOTS:", cnots)
+    print("CNOT Depth of the circuit:", cnot_depth)
     print("Depth of the circuit: ", depth)
 
     data_depth = {
@@ -460,20 +487,34 @@ for n in range(2, 8):  # from 2 to 7 inclusive
     df_depth = pd.DataFrame(data_depth)
     file_exists = os.path.isfile(file_name_baseline)
 
-    with open(file_name_baseline, mode="a", newline="") as file:
-        writer = csv.writer(file)
+    try:
+        with open(file_name_baseline, 'x', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Size", "CNOTs", "cnot Depth"])
+    except FileExistsError:
+        pass  # File already exists, don't overwrite header
 
-        # Write the header only if the file is new
-        if not file_exists:
-            writer.writerow(["Size", "Depth", "Two-Qubit Gates", "two_qubit Depth", "Total Gates"])
+    # Append data
+    with open(file_name_baseline, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([num_qubits, cnots, cnot_depth])
+
+
+    # with open(file_name_baseline, mode="a", newline="") as file:
+    #     writer = csv.writer(file)
+
+    #     # Write the header only if the file is new
+    #     if not file_exists:
+    #         writer.writerow(["Size", "Depth", "Two-Qubit Gates", "two_qubit Depth", "Total Gates"])
         
-        # Append the new result
-        writer.writerow([num_qubits, depth, total_two_qubit_gates, two_qubit_depth, total_gates])
+    #     # Append the new result
+    #     writer.writerow([num_qubits, depth, total_two_qubit_gates, two_qubit_depth, total_gates])
 
+# %%
     ###################################### Penalty ######################################
     # file_name_penalty = f"RESULTS/CNOTs/total_cnots_{rot}rots_penalty_no_init.csv"
-    # file_name_penalty = f"RESULTS/CNOTs/total_cnots_{rot}rots_penalty.csv"
-    file_name_penalty = f"RESULTS/CNOTs/total_cnots_{rot}rots_penalty_opt.csv"
+    # file_name_penalty = f"RESULTS/CNOTs/cnots_{rot}rots_penalty.csv"
+    file_name_penalty = f"RESULTS/CNOTs/cnots_{rot}rots_penalty_opt.csv"
 
     from itertools import combinations
 
@@ -514,25 +555,27 @@ for n in range(2, 8):  # from 2 to 7 inclusive
 
     for i in range(num_qubits):
         for j in range(i+1, num_qubits):
-            if H[i][j] != 0:
-                terms.append(generate_pauli_zij(num_qubits, i, j).to_label())
-                coeffs.append(M[i][j])
+            if M[i][j] != 0:
+                pauli = generate_pauli_zij(num_qubits, i, j)
+                op = SparsePauliOp(pauli, coeffs=[M[i][j]])
+                q_hamiltonian_pen += op
 
     for i in range(num_qubits):
-        terms.append(generate_pauli_zij(num_qubits, i, i).to_label())
-        coeffs.append(M[i][i])
+        pauli = generate_pauli_zij(num_qubits, i, i)
+        Z_i = SparsePauliOp(pauli, coeffs=[M[i][i]])
+        q_hamiltonian_pen += Z_i
 
-    q_hamiltonian_pen = SparsePauliOp.from_list(list(zip(terms, coeffs)))
+    # q_hamiltonian_pen = SparsePauliOp.from_list(list(zip(terms, coeffs)))
 
     ansatz_penalty = QAOAAnsatz(q_hamiltonian_pen, mixer_operator=mixer_op, reps=p)
 
     full_circuit_pen = qc_bl_init.compose(ansatz_penalty, front=False)
 
     with open(f"full_circuit_pen_opt_{num_qubits}_qubits.qpy", "wb") as f:
-        qpy.dump(full_circuit, f)
+        qpy.dump(full_circuit_pen, f)
 
     full_circuit_pen_isa = transpile(full_circuit_pen, backend=None, initial_layout=trivial_layout,
-                                coupling_map=torino_coupling_map, basis_gates=['cz', 'rz', 'rzz', 'rx', 'id', 'x', 'sx'], 
+                                coupling_map=torino_coupling_map, basis_gates=['cx', 'rz', 'rx', 'id', 'x', 'sx'], 
                                 optimization_level=optimization_level, layout_method=layout_method, routing_method=routing_method)
 
     print("\n\nAnsatz layout after explicit transpilation:", full_circuit_pen_isa._layout)
@@ -547,8 +590,14 @@ for n in range(2, 8):  # from 2 to 7 inclusive
         filter_function=lambda instr: len(instr.qubits) == 2
     )
 
+    cnots = op_counts.get('cx', 0)
+    cnot_depth = full_circuit_pen_isa.depth(
+    filter_function=lambda instr: instr.operation.name == 'cx')
+
     print("Operation counts:", op_counts)
     print("Total number of gates:", total_gates)
+    print("CNOTS:", cnots)
+    print("CNOT Depth of the circuit:", cnot_depth)
     print("Depth of the circuit: ", depth)
 
     data_depth = {
@@ -561,20 +610,32 @@ for n in range(2, 8):  # from 2 to 7 inclusive
     file_exists = os.path.isfile(file_name_penalty)
     df_depth = pd.DataFrame(data_depth)
 
-    with open(file_name_penalty, mode="a", newline="") as file:
-        writer = csv.writer(file)
+    # with open(file_name_penalty, mode="a", newline="") as file:
+    #     writer = csv.writer(file)
 
-        # Write the header only if the file is new
-        if not file_exists:
-            writer.writerow(["Size", "Depth", "Two-Qubit Gates", "two_qubit Depth", "Total Gates"])
+    #     # Write the header only if the file is new
+    #     if not file_exists:
+    #         writer.writerow(["Size", "Depth", "Two-Qubit Gates", "two_qubit Depth", "Total Gates"])
         
-        # Append the new result
-        writer.writerow([num_qubits, depth, total_two_qubit_gates, two_qubit_depth, total_gates])
+    #     # Append the new result
+    #     writer.writerow([num_qubits, depth, total_two_qubit_gates, two_qubit_depth, total_gates])
 
+    try:
+        with open(file_name_penalty, 'x', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Size", "CNOTs", "cnot Depth"])
+    except FileExistsError:
+        pass  # File already exists, don't overwrite header
 
+    # Append data
+    with open(file_name_penalty, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([num_qubits, cnots, cnot_depth])
 
 # full_circuit_pen_isa.draw(output='mpl', idle_wires=False)
 # plt.show()
 
 
     
+
+# %%

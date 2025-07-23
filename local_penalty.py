@@ -14,7 +14,7 @@ from itertools import combinations, product
 import matplotlib.pyplot as plt
 
 
-num_res = 4
+num_res = 2
 num_rot = 2
 file_path = f"RESULTS/{num_rot}rot-localpenalty-QAOA/{num_res}res-{num_rot}rot.csv"
 file_path_depth = f"RESULTS/Depths/{num_rot}rot-localpenalty-QAOA-noopt/{num_res}res-{num_rot}rot.csv"
@@ -519,6 +519,7 @@ def compute_qaoa_depth(cost_hamiltonian, mixer_hamiltonian=None, mixer_type="X")
 
 # Run the depth analysis with graph coloring
 D_HC, D_QAOA_layer, layer_assignments, details = compute_qaoa_depth(q_hamiltonian, mixer_op, "X")
+depth_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian)
 
 # Convert to DataFrame for better readability
 layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
@@ -541,10 +542,10 @@ with open(file_name, mode="a", newline="") as file:
 
 # Print results
 print(layer_df.to_string(index=False))  # Display the commuting layers
-print(f"\n Estimated depth of H_C: {depth}")
+print(f"\n Estimated depth of H_C: {depth_HC}")
 print(f" Number of qubits: {size}")
-# print(f" Number of ZZ layers: {num_ZZ_layers}")
-# print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
+print(f" Number of ZZ layers: {num_ZZ_layers}")
+print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
 print(f" Estimated depth of one QAOA layer: {D_QAOA_layer}")
 
  # %% ############################################ q_hamiltonian connectivity ########################################################################

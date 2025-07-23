@@ -22,7 +22,7 @@ from pyrosetta import PyMOLMover
 
 # Initiate structure, scorefunction, change PDB files
 num_res = 2
-num_rot = 3
+num_rot = 2
 pose = pyrosetta.pose_from_pdb(f"input_files/{num_res}residue.pdb")
 
 
@@ -109,7 +109,7 @@ for residue_number in range(1, residue_count):
         
     if not edge_exists:
             continue
-    
+
     for rot_i in range(1, rotamer_set_i.num_rotamers() + 1):
         for rot_j in range(1, rotamer_set_j.num_rotamers() + 1):
             E[rot_i-1, rot_j-1] = ig.get_two_body_energy_for_edge(molten_res_i, molten_res_j, rot_i, rot_j)
@@ -120,7 +120,6 @@ for residue_number in range(1, residue_count):
             # print(f"Interaction energy between rotamers of residue {residue_number} rotamer {rot_i} and residue {residue_number2} rotamer {rot_j} :", Hamiltonian[rot_i-1, rot_j-1])
             data = {'res i': residue_number, 'res j': residue_number2, 'rot A_i': rot_i, 'rot B_j': rot_j, 'E_ij': Hamiltonian[rot_i-1, rot_j-1]}
             data_list.append(data)
-     
 
 # Save the two-body energies to a csv file
 df = pd.DataFrame(data_list)
@@ -128,7 +127,6 @@ df.to_csv('energy_files/two_body_terms.csv', index=False)
 
 # to choose the two rotamers with the largest energy in absolute value
 # df.assign(abs_E=df['E_ij'].abs()).nlargest(2, 'abs_E').drop(columns=['abs_E']).to_csv('two_body_terms.csv', index=False)
-
 
 # Loop to find Hamiltonian values Jii
 for residue_number in range(1, residue_count + 1):

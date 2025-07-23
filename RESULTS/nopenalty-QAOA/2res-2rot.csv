@@ -1,2 +1,10 @@
 Experiment,Ground State Energy,Best Measurement,Execution Time (seconds),Number of qubits
-Aer Simulation XY QAOA,5.233924865722656,010110,N/A,6
+Aer Simulation XY QAOA,2.556375741958618,0101,N/A,4
+
+
+Classical optimisation results.
+Ground energy eigsh: -2.785470843315125
+Ground state wavefunction eigsh: [-1.00000000e+00 -7.76147111e-17  3.10686998e-16  8.77971708e-17
+ -7.54650874e-16 -1.05245463e-17  4.76023287e-17 -7.49681080e-17
+ -6.56809718e-16 -1.91256649e-16 -6.76599869e-17  2.10646055e-16
+  1.93378048e-16 -1.27110001e-16  2.86098051e-16  1.08052244e-16]

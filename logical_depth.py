@@ -22,7 +22,7 @@ from pyrosetta import PyMOLMover
 from qiskit import QuantumCircuit
 # %%
 # Initiate structure, scorefunction, change PDB files
-for n in range(7,8):  # from 2 to 7 inclusive
+for n in range(6,8):  # from 2 to 7 inclusive
     res = n
     rot = n
 
@@ -216,26 +216,116 @@ for n in range(7,8):  # from 2 to 7 inclusive
 
     print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian_XY))
     import networkx as nx
-    def create_xy_hamiltonian(num_qubits):
-        hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])  
-        for i in range(0, num_qubits, 2):
-            if i + 1 < num_qubits:
+    #  only for 2 rotamers
+    # def create_xy_hamiltonian(num_qubits):
+    #     hamiltonian = SparsePauliOp(Pauli('I'*num_qubits), coeffs=[0])  
+    #     for i in range(0, num_qubits, 2):
+    #         if i + 1 < num_qubits:
+    #             xx_term = ['I'] * num_qubits
+    #             yy_term = ['I'] * num_qubits
+    #             xx_term[i] = 'X'
+    #             xx_term[i+1] = 'X'
+    #             yy_term[i] = 'Y'
+    #             yy_term[i+1] = 'Y'
+    #             xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
+    #             yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
+    #             hamiltonian += xx_op + yy_op
+    #     return -hamiltonian 
+    
+    from qiskit.quantum_info import SparsePauliOp, Pauli
+
+    # swapping between nearest neighbours, 1d chain
+    def create_local_XY_mixer(num_qubits, block_size):
+        if num_qubits % block_size != 0:
+            raise ValueError("num_qubits must be divisible by block_size.")
+
+        hamiltonian = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
+        num_blocks = num_qubits // block_size
+
+        for i in range(num_blocks):  # block index
+            block_start = i * block_size
+            for j in range(0, block_size - 1):  # j = 0 to n-2
+                qubit_1 = block_start + j
+                qubit_2 = block_start + j + 1
+
                 xx_term = ['I'] * num_qubits
                 yy_term = ['I'] * num_qubits
-                xx_term[i] = 'X'
-                xx_term[i+1] = 'X'
-                yy_term[i] = 'Y'
-                yy_term[i+1] = 'Y'
+
+                xx_term[qubit_1] = 'X'
+                xx_term[qubit_2] = 'X'
+                yy_term[qubit_1] = 'Y'
+                yy_term[qubit_2] = 'Y'
+
                 xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
                 yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
+
                 hamiltonian += xx_op + yy_op
-        return -hamiltonian 
 
-    XY_mixer = create_xy_hamiltonian(num_qubits)
+        return hamiltonian
+    
+    # with modulo periodic boundary conditions, all interactions
+    def get_XY_mixer(num_qubits, num_rot, transverse_field=1):
+        if num_rot < 2:
+            raise ValueError("num_rot must be at least 2.")
+
+        hamiltonian = SparsePauliOp(Pauli('I' * num_qubits), coeffs=[0])
+
+        for i in range(0, num_qubits - num_rot + 1, num_rot):          
+            for j in range(num_rot):
+                for k in range(j + 1, num_rot):
+                    xx_term = ['I'] * num_qubits
+                    yy_term = ['I'] * num_qubits
+
+                    xx_term[i + j] = 'X'
+                    xx_term[i + k] = 'X'
+                    yy_term[i + j] = 'Y'
+                    yy_term[i + k] = 'Y'
+
+                    xx_op = SparsePauliOp(Pauli(''.join(xx_term)), coeffs=[1/2])
+                    yy_op = SparsePauliOp(Pauli(''.join(yy_term)), coeffs=[1/2])
+
+                    hamiltonian += xx_op + yy_op
+
+        hamiltonian *= transverse_field
+        return -hamiltonian if num_rot == 2 else hamiltonian
+    
+    # with periodic boundary conditions, just nearest neighbour
+    def create_periodic_local_xy_mixer(num_qubits, block_size):
+        if num_qubits % block_size != 0:
+            raise ValueError("num_qubits must be divisible by block_size.")
+
+        num_blocks = num_qubits // block_size
+        paulis = []
+        coeffs = []
+
+        for block in range(num_blocks):
+            base = block * block_size
+            for j in range(block_size):
+                q1 = base + j
+                q2 = base + (j + 1) % block_size  # modulo for periodicity
+
+                # XX term
+                xx = ['I'] * num_qubits
+                xx[q1] = 'X'
+                xx[q2] = 'X'
+                paulis.append(Pauli("".join(xx)))
+                coeffs.append(0.5)
+
+                # YY term
+                yy = ['I'] * num_qubits
+                yy[q1] = 'Y'
+                yy[q2] = 'Y'
+                paulis.append(Pauli("".join(yy)))
+                coeffs.append(0.5)
+
+        return SparsePauliOp(paulis, coeffs=np.array(coeffs))
 
 
+    XY_mixer = create_periodic_local_xy_mixer(num_qubits, rot)
+
+# %%
 # ################################## XY depth ##############################
-    file_name_XY = f"RESULTS/qH_depths/qH_depth_{rot}rots_nopenalty.csv"
+    file_name_XY = f"RESULTS/qH_depths/cnot_depth_{rot}rots_nopenalty.csv"
 
     def create_product_state(base_circuit, n):
         num_qubits = base_circuit.num_qubits
@@ -292,6 +382,9 @@ for n in range(7,8):  # from 2 to 7 inclusive
         They must be placed in different layers if they touch the same qubit.
         """
         return any(p1 != 'I' and p2 != 'I' for p1, p2 in zip(pauli1, pauli2))
+    
+    def is_two_qubit_non_identity(label):
+        return sum(p != 'I' for p in label) == 2
 
 
     def compute_commuting_layers(hamiltonian):
@@ -340,9 +433,46 @@ for n in range(7,8):  # from 2 to 7 inclusive
             layer_assignments[term] = num_ZZ_layers  # Put single-qubit Z terms in their own separate layer
 
         # Compute Corrected Depth: (ZZ layers * 3) + (Single-Z layers * 1)
-        depth_HC = (num_ZZ_layers * 3) + (num_single_Z_layers * 1)
+        cnot_depth = (num_ZZ_layers * 2) + (num_single_Z_layers * 0)
 
-        return depth_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments
+        return cnot_depth, num_ZZ_layers, num_single_Z_layers, layer_assignments
+    
+
+    def compute_xy_mixer_layers_blockwise(mixer_hamiltonian: SparsePauliOp, block_size: int):
+        """
+        Computes the number of parallel XY mixer layers (CNOT depth = 2 × this) for periodic local blocks.
+        Assumes terms are only between neighbors within each block.
+        """
+        import networkx as nx
+
+        pauli_labels = [pauli.to_label() for pauli in mixer_hamiltonian.paulis]
+        num_qubits = len(pauli_labels[0])
+        if num_qubits % block_size != 0:
+            raise ValueError("Number of qubits must be divisible by block_size.")
+
+        num_blocks = num_qubits // block_size
+        max_layers_per_block = 0
+
+        for b in range(num_blocks):
+            block_start = b * block_size
+            edges = []
+
+            # Get only 2-qubit terms in this block
+            for label in pauli_labels:
+                qubits = [i for i, p in enumerate(label) if p in ('X', 'Y')]
+                if len(qubits) == 2 and block_start <= qubits[0] < block_start + block_size:
+                    edges.append(tuple(sorted(qubits)))
+
+            # Build line graph and apply greedy edge coloring
+            G = nx.Graph()
+            G.add_edges_from(edges)
+            LG = nx.line_graph(G)
+            coloring = nx.coloring.greedy_color(LG, strategy='saturation_largest_first')
+            num_layers = max(coloring.values()) + 1 if coloring else 0
+            max_layers_per_block = max(max_layers_per_block, num_layers)
+
+        cnot_depth = 2 * max_layers_per_block
+        return cnot_depth, max_layers_per_block
 
 
     def compute_qaoa_depth(cost_hamiltonian, mixer_hamiltonian=None, mixer_type="X"):
@@ -369,33 +499,64 @@ for n in range(7,8):  # from 2 to 7 inclusive
         elif mixer_type == "XY":
             if mixer_hamiltonian is None:
                 raise ValueError("XY mixer selected but no mixer Hamiltonian provided.")
-            D_HB, num_XY_layers, _, _ = compute_commuting_layers(mixer_hamiltonian)
+            cnot_depth, num_XY_layers = compute_xy_mixer_layers_blockwise(mixer_hamiltonian, rot)
         else:
             raise ValueError("Unknown mixer type.")
 
-        D_QAOA_layer = D_HC + D_HB
-
         ZZ_layers = num_XY_layers + num_ZZ_layers
 
+        cnot_layers = 2 * ZZ_layers
+
         details = {
-            "D_HC": D_HC,
-            "D_HB": D_HB,
-            "D_QAOA_layer": D_QAOA_layer,
             "num_ZZ_layers": num_ZZ_layers,
             "num_single_Z_layers": num_single_Z_layers,
             "num_mixer_layers": num_XY_layers,
             "mixer_type": mixer_type,
         }
 
-        return D_HC, D_QAOA_layer, ZZ_layers, num_XY_layers, details
+        return cnot_layers, ZZ_layers, num_XY_layers, details
 
 
     def count_two_qubit_layers(qc):
         return qc.depth(filter_function=lambda gate: gate[0].num_qubits == 2)
+    
+
+    def visualize_qubit_interactions(hamiltonian, num_qubits):
+        """
+        Creates a graph visualization of qubit interactions based on ZZ terms in the Hamiltonian.
+
+        Parameters:
+        - hamiltonian: SparsePauliOp representing the Hamiltonian.
+        - num_qubits: Number of qubits in the system.
+
+        Returns:
+        - A plotted graph showing qubit connectivity.
+        """
+        pauli_labels = [pauli.to_label() for pauli in hamiltonian.paulis]
+
+        # Initialize graph
+        G = nx.Graph()
+
+        # Add nodes for qubits
+        G.add_nodes_from(range(num_qubits))
+
+        # Identify ZZ interactions and add edges
+        for label in pauli_labels:
+            if label.count('Z') == 2:  # Identify ZZ terms
+                qubits = [i for i, pauli in enumerate(label) if pauli == 'Z']
+                if len(qubits) == 2:
+                    G.add_edge(qubits[0], qubits[1])
+
+        # Plot the graph
+        plt.figure(figsize=(8, 6))
+        pos = nx.spring_layout(G)  # Layout for better visualization
+        nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=500, font_size=10)
+        plt.title("Qubit Interaction Graph from ZZ Terms in Hamiltonian")
+        plt.show()
 
 
     # Run the depth analysis with graph coloring
-    D_HC, D_QAOA_layer, ZZ_layers, num_mixer_layers, details = compute_qaoa_depth(q_hamiltonian_XY, XY_mixer, "XY")
+    cnot_layers, ZZ_layers, num_mixer_layers, details = compute_qaoa_depth(q_hamiltonian_XY, XY_mixer, "XY")
     depth_HC, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian_XY)
 
     # Run the depth analysis with graph coloring
@@ -406,7 +567,7 @@ for n in range(7,8):  # from 2 to 7 inclusive
     layer_df = layer_df.sort_values(by="Assigned Layer")
 
     size = num_qubits
-    depth = D_QAOA_layer
+    depth = cnot_layers
 
     file_exists = os.path.isfile(file_name_XY)
 
@@ -415,19 +576,20 @@ for n in range(7,8):  # from 2 to 7 inclusive
 
         # Write the header only if the file is new
         if not file_exists:
-            writer.writerow(["Size", "ZZ Layers", "ZZ Layers Init State"])
+            writer.writerow(["Size", "CNOT Layers", "ZZ Layers Init State"])
         
         # Append the new result
-        writer.writerow([size, ZZ_layers, zz_layers_init_state])
+        writer.writerow([size, cnot_layers, zz_layers_init_state])
 
     # Print results
     print("XY QAOA")
     print(layer_df.to_string(index=False))  # Display the commuting layers
     print(f" Number of qubits: {size}")
-    print(f" Number of ZZ layers: {num_ZZ_layers}")
+    print(f" Number of ZZ layers in cost: {num_ZZ_layers}")
+    print(f" Number of total two qubit layers: {ZZ_layers}")
+    print(f" Total number of cnot layers: {cnot_layers}")
     print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
-    print(f" Number of ZZ mixer layers: {num_mixer_layers}")
-    print(f" Estimated number of total two qubit layers: {ZZ_layers}")
+    print(f" Number of CNOT mixer layers: {2 * num_mixer_layers}")
 
 #         ########################### PENALTY ############################
 
@@ -502,9 +664,9 @@ for n in range(7,8):  # from 2 to 7 inclusive
     # print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian))
 
     mixer_op = sum(X_op(i,num_qubits) for i in range(num_qubits))
-    file_name_pen = f"RESULTS/qH_depths/qH_depth_{rot}rots_penalties.csv"
+    file_name_pen = f"RESULTS/qH_depths/cnot_depth_{rot}rots_penalties.csv"
 
-    D_HC, D_QAOA_layer, ZZ_layers, num_mixer_layers, details = compute_qaoa_depth(q_hamiltonian_pen, mixer_op, "X")
+    cnot_layers, ZZ_layers, num_mixer_layers, details = compute_qaoa_depth(q_hamiltonian_pen, mixer_op, "X")
     D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian_pen)
 
     zz_layers_init_state = count_two_qubit_layers(qc_bl_init)
@@ -519,20 +681,24 @@ for n in range(7,8):  # from 2 to 7 inclusive
 
         # Write the header only if the file is new
         if not file_exists:
-            writer.writerow(["Size", "ZZ Layers", "ZZ Layers Init State"])
+            writer.writerow(["Size", "CNOT Layers", "ZZ Layers Init State"])
         
         # Append the new result
-        writer.writerow([size, ZZ_layers, zz_layers_init_state])
+        writer.writerow([size, cnot_layers, zz_layers_init_state])
 
+    # Convert to DataFrame for better readability
+    layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
+    layer_df = layer_df.sort_values(by="Assigned Layer")
 
     # Print results
     print(layer_df.to_string(index=False))  # Display the commuting layers
     print("Penalty QAOA")
     print(f" Number of qubits: {size}")
-    print(f" Number of ZZ layers: {num_ZZ_layers}")
+    print(f" Number of ZZ layers in cost: {num_ZZ_layers}")
+    print(f" Number of total two qubit layers: {ZZ_layers}")
+    print(f" Total number of cnot layers: {cnot_layers}")
     print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
-    print(f" Number of ZZ layers mixer: {num_mixer_layers}")
-    print(f" Estimated number of total two qubit layers: {ZZ_layers}")
+    print(f" Number of CNOT mixer layers: {2 * num_mixer_layers}")
 
 
     ########################### BASELINE ############################
@@ -561,10 +727,10 @@ for n in range(7,8):  # from 2 to 7 inclusive
 
     print(f"\nThe hamiltonian constructed using Pauli operators is: \n", format_sparsepauliop(q_hamiltonian_bl))
 
-    file_name_bl = f"RESULTS/qH_depths/qH_depth_{rot}rots_baseline.csv"
+    file_name_bl = f"RESULTS/qH_depths/cnot_depth_{rot}rots_baseline.csv"
     
     # Run the depth analysis with graph coloring
-    D_HC, D_QAOA_layer, ZZ_layers, num_mixer_layers, details = compute_qaoa_depth(q_hamiltonian_bl, mixer_op, "X")
+    cnot_layers, ZZ_layers, num_mixer_layers, details = compute_qaoa_depth(q_hamiltonian_bl, mixer_op, "X")
     D_QAOA_layer, num_ZZ_layers, num_single_Z_layers, layer_assignments = compute_commuting_layers(q_hamiltonian_bl)
     
     file_exists = os.path.isfile(file_name_bl)
@@ -574,18 +740,23 @@ for n in range(7,8):  # from 2 to 7 inclusive
 
         # Write the header only if the file is new
         if not file_exists:
-            writer.writerow(["Size", "ZZ Layers", "ZZ Layers Init State"])
+            writer.writerow(["Size", "CNOT Layers", "ZZ Layers Init State"])
         
         # Append the new result
-        writer.writerow([size, ZZ_layers, zz_layers_init_state])
+        writer.writerow([size, cnot_layers, zz_layers_init_state])
+    
+    # Convert to DataFrame for better readability
+    layer_df= pd.DataFrame(list(layer_assignments.items()), columns=["Term", "Assigned Layer"])
+    layer_df = layer_df.sort_values(by="Assigned Layer")
 
     # Print results
     print(layer_df.to_string(index=False))  # Display the commuting layers
     print("BASELINE")
     print(f" Number of qubits: {size}")
-    print(f" Number of ZZ layers: {num_ZZ_layers}")
+    print(f" Number of ZZ layers in cost: {num_ZZ_layers}")
+    print(f" Number of total two qubit layers: {ZZ_layers}")
+    print(f" Total number of cnot layers: {cnot_layers}")
     print(f" Number of single-qubit Z layers: {num_single_Z_layers}")
-    print(f" Number of ZZ layers mixer: {num_mixer_layers}")
-    print(f" Estimated number of total two qubit layers: {ZZ_layers}")
+    print(f" Number of CNOT mixer layers: {2 * num_mixer_layers}")
 
 # %%

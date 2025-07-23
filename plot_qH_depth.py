@@ -309,18 +309,18 @@ plt.show()
 from functools import reduce
 
 file_info = [
-    ("RESULTS/qH_depths/qH_depth_2rots_nopenalty.csv", "Depth_1"),
-    ("RESULTS/qH_depths/qH_depth_3rots_nopenalty.csv", "Depth_2"),
-    ("RESULTS/qH_depths/qH_depth_4rots_nopenalty.csv", "Depth_3"),
-    ("RESULTS/qH_depths/qH_depth_5rots_nopenalty.csv", "Depth_4"),
-    ("RESULTS/qH_depths/qH_depth_6rots_nopenalty.csv", "Depth_5"),
-    ("RESULTS/qH_depths/qH_depth_7rots_nopenalty.csv", "Depth_6"),
-    ("RESULTS/qH_depths/qH_depth_2rots_penalties.csv", "Depth_1_pen"),
-    ("RESULTS/qH_depths/qH_depth_3rots_penalties.csv", "Depth_2_pen"),
-    ("RESULTS/qH_depths/qH_depth_4rots_penalties.csv", "Depth_3_pen"),
-    ("RESULTS/qH_depths/qH_depth_5rots_penalties.csv", "Depth_4_pen"),
-    ("RESULTS/qH_depths/qH_depth_6rots_penalties.csv", "Depth_5_pen"),
-    ("RESULTS/qH_depths/qH_depth_7rots_penalties.csv", "Depth_6_pen")
+    ("RESULTS/qH_depths/total_depth_2rots_nopenalty.csv", "Depth_1"),
+    ("RESULTS/qH_depths/total_depth_3rots_nopenalty.csv", "Depth_2"),
+    ("RESULTS/qH_depths/total_depth_4rots_nopenalty.csv", "Depth_3"),
+    ("RESULTS/qH_depths/total_depth_5rots_nopenalty.csv", "Depth_4"),
+    ("RESULTS/qH_depths/total_depth_6rots_nopenalty.csv", "Depth_5"),
+    ("RESULTS/qH_depths/total_depth_7rots_nopenalty.csv", "Depth_6"),
+    ("RESULTS/qH_depths/total_depth_2rots_penalties.csv", "Depth_1_pen"),
+    ("RESULTS/qH_depths/total_depth_3rots_penalties.csv", "Depth_2_pen"),
+    ("RESULTS/qH_depths/total_depth_4rots_penalties.csv", "Depth_3_pen"),
+    ("RESULTS/qH_depths/total_depth_5rots_penalties.csv", "Depth_4_pen"),
+    ("RESULTS/qH_depths/total_depth_6rots_penalties.csv", "Depth_5_pen"),
+    ("RESULTS/qH_depths/total_depth_7rots_penalties.csv", "Depth_6_pen")
 ]
 
 # Load datasets
@@ -404,6 +404,7 @@ plt.savefig(pdf_filename, format="pdf", bbox_inches="tight")
 plt.show()
 
 # %% #################################  one plot per num rots ##########################################
+## Logical Depth 
 from functools import reduce
 import re
 import numpy as np
@@ -436,8 +437,24 @@ file_info = [
 ]
 
 # Load and merge
-dfs = [pd.read_csv(file).rename(columns={"Depth": depth}) for file, depth in file_info]
+dfs = []
+for file, label in file_info:
+    df_temp = pd.read_csv(file)
+    
+    # Ensure only relevant columns are kept
+    if "Depth" not in df_temp.columns:
+        raise ValueError(f"'Depth' column not found in {file}")
+    if "Size" not in df_temp.columns:
+        raise ValueError(f"'Size' column not found in {file}")
+    
+    df_temp = df_temp[["Size", "Depth"]].rename(columns={"Depth": label})
+    dfs.append(df_temp)
+
+# Merge all on "Size"
 df = reduce(lambda left, right: pd.merge(left, right, on="Size", how="outer"), dfs)
+
+# dfs = [pd.read_csv(file).rename(columns={"Depth": depth}) for file, depth in file_info]
+# df = reduce(lambda left, right: pd.merge(left, right, on="Size", how="outer"), dfs)
 df.sort_values(by="Size", inplace=True)
 df.interpolate(inplace=True)
 
@@ -471,7 +488,7 @@ def extract_num_rot(filename):
     else:
         raise ValueError(f"Could not extract num_rot from filename: {filename}")
 
-# Loop over each file and its corresponding label
+# Loop over each file and its corresponding label :these are total depths including single qubit gates
 # manual_init_depths = {
 #     2: 6,
 #     3: 11,
@@ -778,9 +795,9 @@ for rot in range(2,8):
 
     # Plot
     plt.figure(figsize=(8, 6))
-    plt.plot(df_xy['Size'], df_xy['CNOTs'], marker='o', label='XY', color='royalblue')
-    plt.plot(df_baseline['Size'], df_baseline['CNOTs'], marker='s', label='Baseline', color='slategray')
-    plt.plot(df_penalty['Size'], df_penalty['CNOTs'], marker='^', label='Penalty', color='darkorange')
+    plt.plot(df_xy['Size'], df_xy['two_qubit_gates'], marker='o', label='XY', color='royalblue')
+    plt.plot(df_baseline['Size'], df_baseline['two_qubit_gates'], marker='s', label='Baseline', color='slategray')
+    plt.plot(df_penalty['Size'], df_penalty['two_qubit_gates'], marker='^', label='Penalty', color='darkorange')
 
     plt.xlabel('Size')
     plt.ylabel('Number of CNOT Gates')
@@ -805,17 +822,30 @@ axes = axes.flatten()
 for idx, rot in enumerate(rotamer_range):
     ax = axes[idx]
 
-    file_path_depth = f"RESULTS/CNOTs/total_cnots_{rot}rots_XY_no_init.csv"
-    file_name_baseline = f"RESULTS/CNOTs/total_cnots_{rot}rots_baseline_no_init.csv"
-    file_name_penalty = f"RESULTS/CNOTs/total_cnots_{rot}rots_penalty_no_init.csv"
+    def safe_load(path):
+        return pd.read_csv(path) if os.path.exists(path) else None
 
-    df_xy = pd.read_csv(file_path_depth)
-    df_baseline = pd.read_csv(file_name_baseline)
-    df_penalty = pd.read_csv(file_name_penalty)
+    # Load default and opt versions if available
+    files = {
+        'XY': [f"RESULTS/CNOTs/total_cnots_{rot}rots_XY.csv", f"RESULTS/CNOTs/total_cnots_{rot}rots_XY_opt.csv"],
+        'Baseline': [f"RESULTS/CNOTs/total_cnots_{rot}rots_baseline.csv", f"RESULTS/CNOTs/total_cnots_{rot}rots_baseline_opt.csv"],
+        'Penalty': [f"RESULTS/CNOTs/total_cnots_{rot}rots_penalty.csv", f"RESULTS/CNOTs/total_cnots_{rot}rots_penalty_opt.csv"]
+    }
 
-    ax.plot(df_xy['Size'], df_xy['CNOTs'], marker='o', label='XY', color='royalblue')
-    ax.plot(df_baseline['Size'], df_baseline['CNOTs'], marker='s', label='Baseline', color='slategray')
-    ax.plot(df_penalty['Size'], df_penalty['CNOTs'], marker='^', label='Penalty', color='darkorange')
+    styles = {
+        'XY':        ('royalblue', 'o-', 'o--'),
+        'Baseline':  ('slategray', 's-', 's--'),
+        'Penalty':   ('darkorange', '^-', '^--')
+    }
+
+    for label, (color, style_plain, style_opt) in styles.items():
+        df = safe_load(files[label][0])
+        df_opt = safe_load(files[label][1])
+        
+        if df is not None:
+            ax.plot(df['Size'], df['two_qubit_gates'], style_plain, label=f'{label}', color=color)
+        if df_opt is not None:
+            ax.plot(df_opt['Size'], df_opt['two_qubit_gates'], style_opt, label=f'{label} (opt)', color=color)
 
     ax.set_title(f'{rot} Rotamers')
     ax.grid(True)
@@ -829,14 +859,50 @@ for idx, rot in enumerate(rotamer_range):
 for j in range(idx + 1, len(axes)):
     fig.delaxes(axes[j])
 
-# Single legend on top
-handles, labels = ax.get_legend_handles_labels()
+# Collect legend from all subplots
+handles, labels = axes[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.05))
 
-fig.suptitle('Transpiled CNOTs Without State Prep.', fontsize=16)
-
+fig.suptitle('Transpiled two-qubit gate counts (Standard vs Optimized)', fontsize=16)
 plt.tight_layout()
 plt.subplots_adjust(top=0.90)
 plt.show()
+
+# %%
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load all data
+df_xy_no_init = pd.read_csv("RESULTS/CNOTs/XY_no_init.csv")
+df_xy_init = pd.read_csv("RESULTS/CNOTs/XY_init.csv")
+
+df_baseline_no_init = pd.read_csv("RESULTS/CNOTs/baseline_no_init.csv")
+df_baseline_init = pd.read_csv("RESULTS/CNOTs/baseline_init.csv")
+
+df_penalty_no_init = pd.read_csv("RESULTS/CNOTs/penalty_no_init.csv")
+df_penalty_init = pd.read_csv("RESULTS/CNOTs/penalty_init.csv")
+
+# Create plot
+plt.figure(figsize=(10, 6))
+
+# Plot each curve
+plt.plot(df_xy_no_init["Size"], df_xy_no_init["Depth"], 'o-', label='XY (no init)', color='royalblue')
+plt.plot(df_xy_init["Size"], df_xy_init["Depth"], 'o--', label='XY (with init)', color='royalblue')
+
+plt.plot(df_baseline_no_init["Size"], df_baseline_no_init["Depth"], 's-', label='Baseline (no init)', color='slategray')
+plt.plot(df_baseline_init["Size"], df_baseline_init["Depth"], 's--', label='Baseline (with init)', color='slategray')
+
+plt.plot(df_penalty_no_init["Size"], df_penalty_no_init["Depth"], '^-', label='Penalty (no init)', color='darkorange')
+plt.plot(df_penalty_init["Size"], df_penalty_init["Depth"], '^--', label='Penalty (with init)', color='darkorange')
+
+# Labeling
+plt.xlabel('Structure Size')
+plt.ylabel('Depth')
+plt.title('Number of Layers vs Structure Size (With vs Without Initial State Preparation)')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
 
 # %%

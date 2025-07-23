@@ -3,7 +3,7 @@ from qiskit.circuit.library import RXXGate
 import matplotlib.pyplot as plt
 
 # Initialize a quantum circuit with 2 qubits
-qc = QuantumCircuit(2)
+qc = QuantumCircuit(4)
 
 # Define the mixing angle
 theta = 0.5  # Adjust this angle as needed
